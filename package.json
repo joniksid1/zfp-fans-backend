@@ -1,0 +1,31 @@
+{
+  "name": "zfp-fans-backend",
+  "version": "1.0.0",
+  "description": "# Бэкенд программы подбора крышных вентиляторов ZFP-fans",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "npx eslint .",
+    "dev": "nodemon --inspect -- app.js",
+    "start": "node app.js"
+  },
+  "author": "Mikhail Kuznetsov",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^8.54.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "nodemon": "^3.0.2"
+  },
+  "dependencies": {
+    "celebrate": "^15.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-winston": "^4.2.0",
+    "joi": "^17.11.0",
+    "mysql2": "^3.7.0",
+    "validator": "^13.11.0",
+    "winston": "^3.11.0"
+  }
+}
