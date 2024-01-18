@@ -7,6 +7,7 @@ const { router } = require('./routes/root');
 const { NotFoundError } = require('./utils/errors/not-found-error');
 const error = require('./middlewares/error');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
+const { getDataSheet } = require('./controllers/datasheet');
 
 const { PORT = '3000', MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE } = process.env;
 
@@ -27,21 +28,21 @@ db.connect((err) => {
   }
 });
 
-db.query('SELECT * FROM zfr_dimensions',
-  (err, results, fields) => {
-    console.log(err);
-    console.log(results); // собственно данные
-    console.log(fields); // мета-данные полей
-  }
-);
+// db.query('SELECT * FROM zfr_dimensions',
+//   (err, results, fields) => {
+//     getDataSheet();
+//   }
+// );
 
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:3001'],
+  origin: ['http://localhost:3001', 'http://localhost:5173'],
   credentials: true,
   maxAge: 60,
 }));
+
+app.use(express.raw());
 
 app.use(express.json());
 
