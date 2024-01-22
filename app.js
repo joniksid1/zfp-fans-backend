@@ -6,8 +6,7 @@ const cors = require('cors');
 const { router } = require('./routes/root');
 const { NotFoundError } = require('./utils/errors/not-found-error');
 const error = require('./middlewares/error');
-const { requestLogger, errorLogger } = require('./middlewares/logger');
-const { getDataSheet } = require('./controllers/datasheet');
+const { requestLogger, errorLogger } = require('./middlewares/logger')
 
 const { PORT = '3000', MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE } = process.env;
 
@@ -44,7 +43,7 @@ app.use(cors({
 
 app.use(express.raw());
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 app.use(requestLogger);
 
