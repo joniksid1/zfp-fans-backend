@@ -143,6 +143,248 @@ module.exports.getDataSheet = async (req, res) => {
       return `newDataSheet_${timestamp}.xlsx`;
     };
 
+    let startRow = 59; // Начальная строка для дополнительных опций
+    const maxSecondSheetRows = 99; // Максимальное кол-во строк для вставки опции на 2-м листе
+    const thirdSheetStartRows = 112; // Строка для начала контента третьего листа
+
+    if (selectedData.selectedOptions.selectFlatRoofSocket) {
+      // Добавляем данные изображений из относительного пути ../images/flat-roof-socket/...
+
+      const imagePath1 = path.join(__dirname, '../images/flat-roof-socket/flat-roof-socket.jpg');
+      const image1Buffer = await fs.readFile(imagePath1);
+      const imageId1 = workbook.addImage({
+        buffer: image1Buffer,
+        extension: 'jpeg',
+      });
+      worksheet.addImage(imageId1, {
+        tl: { col: 1, row: startRow + 2 },
+        br: { col: 3, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+
+      const imagePath2 = path.join(__dirname, '../images/flat-roof-socket/flat-roof-socket-dimensions.jpg');
+      const image2Buffer = await fs.readFile(imagePath2);
+      const imageId2 = workbook.addImage({
+        buffer: image2Buffer,
+        extension: 'jpeg',
+      });
+      worksheet.addImage(imageId2, {
+        tl: { col: 4, row: startRow + 2 },
+        br: { col: 8, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+      startRow += 12;
+      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
+        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
+        startRow += 6;
+      }
+      console.log(`${startRow} после flat-roof-socket`);
+    } else {
+      // Удаляем строки, если нет опции
+
+      for (let i = 0; i < 12; i += 1) {
+        worksheet.spliceRows(startRow, 1);
+      }
+    }
+
+    if (selectedData.selectedOptions.selectFlatRoofSocketSilencer) {
+      // Добавляем данные изображений из относительного пути ../images/flat-roof-socket-silencer/...
+
+      const imagePath1 = path.join(__dirname, '../images/flat-roof-socket-silencer/flat-roof-socket-silencer.jpg');
+      const image1Buffer = await fs.readFile(imagePath1);
+      const imageId1 = workbook.addImage({
+        buffer: image1Buffer,
+        extension: 'jpeg',
+      });
+      worksheet.addImage(imageId1, {
+        tl: { col: 1, row: startRow + 2 },
+        br: { col: 3, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+
+      const imagePath2 = path.join(__dirname, '../images/flat-roof-socket-silencer/flat-roof-socket-silencer-dimensions.gif');
+      const image2Buffer = await fs.readFile(imagePath2);
+      const imageId2 = workbook.addImage({
+        buffer: image2Buffer,
+        extension: 'gif',
+      });
+      worksheet.addImage(imageId2, {
+        tl: { col: 4, row: startRow + 2 },
+        br: { col: 8, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+      startRow += 12;
+      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
+        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
+        startRow += 6;
+      }
+      console.log(`${startRow} после flat-roof-socket-silencer`);
+    } else {
+      // Удаляем строки, если нет опции
+      for (let i = 0; i < 12; i += 1) {
+        worksheet.spliceRows(startRow, 1);
+      }
+    }
+
+    if (selectedData.selectedOptions.selectSlantRoofSocketSilencer) {
+      // Добавляем данные изображений из относительного пути
+      // ../images/slant-roof-socket-silencer/...
+
+      const imagePath1 = path.join(__dirname, '../images/slant-roof-socket-silencer/slant-roof-socket-silencer.png');
+      const image1Buffer = await fs.readFile(imagePath1);
+      const imageId1 = workbook.addImage({
+        buffer: image1Buffer,
+        extension: 'png',
+      });
+      worksheet.addImage(imageId1, {
+        tl: { col: 1, row: startRow + 2 },
+        br: { col: 3, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+
+      const imagePath2 = path.join(__dirname, '../images/slant-roof-socket-silencer/slant-roof-socket-silencer-dimensions.gif');
+      const image2Buffer = await fs.readFile(imagePath2);
+      const imageId2 = workbook.addImage({
+        buffer: image2Buffer,
+        extension: 'gif',
+      });
+      worksheet.addImage(imageId2, {
+        tl: { col: 4, row: startRow + 2 },
+        br: { col: 8, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+      startRow += 12;
+      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
+        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
+        startRow += 6;
+      }
+      console.log(`${startRow} после slant-roof-socket-silencer`);
+    } else {
+      // Удаляем строки, если нет опции
+      for (let i = 0; i < 12; i += 1) {
+        worksheet.spliceRows(startRow, 1);
+      }
+    }
+
+    if (selectedData.selectedOptions.selectBackDraftDamper) {
+      // Добавляем данные изображений из относительного пути
+      // ../images/back-draft-damper/...
+
+      const imagePath1 = path.join(__dirname, '../images/back-draft-damper/back-draft-damper.jpg');
+      const image1Buffer = await fs.readFile(imagePath1);
+      const imageId1 = workbook.addImage({
+        buffer: image1Buffer,
+        extension: 'jpg',
+      });
+      worksheet.addImage(imageId1, {
+        tl: { col: 1, row: startRow + 2 },
+        br: { col: 3, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+
+      const imagePath2 = path.join(__dirname, '../images/back-draft-damper/back-draft-damper-dimensions.gif');
+      const image2Buffer = await fs.readFile(imagePath2);
+      const imageId2 = workbook.addImage({
+        buffer: image2Buffer,
+        extension: 'gif',
+      });
+      worksheet.addImage(imageId2, {
+        tl: { col: 4, row: startRow + 2 },
+        br: { col: 8, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+      startRow += 12;
+      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
+        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
+        startRow += 6;
+      }
+      console.log(`${startRow} после back-draft-damper`);
+    } else {
+      // Удаляем строки, если нет опции
+      for (let i = 0; i < 12; i += 1) {
+        worksheet.spliceRows(startRow, 1);
+      }
+    }
+
+    if (selectedData.selectedOptions.selectFlexibleConnector) {
+      // Добавляем данные изображений из относительного пути
+      // ../images/flexible-connector/...
+
+      const imagePath1 = path.join(__dirname, '../images/flexible-connector/flexible-connector.jpg');
+      const image1Buffer = await fs.readFile(imagePath1);
+      const imageId1 = workbook.addImage({
+        buffer: image1Buffer,
+        extension: 'jpg',
+      });
+      worksheet.addImage(imageId1, {
+        tl: { col: 1, row: startRow + 2 },
+        br: { col: 3, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+      const imagePath2 = path.join(__dirname, '../images/flexible-connector/flexible-connector-dimensions.gif');
+      const image2Buffer = await fs.readFile(imagePath2);
+      const imageId2 = workbook.addImage({
+        buffer: image2Buffer,
+        extension: 'gif',
+      });
+      worksheet.addImage(imageId2, {
+        tl: { col: 4, row: startRow + 2 },
+        br: { col: 8, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+      startRow += 12;
+      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
+        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
+        startRow += 6;
+      }
+      console.log(`${startRow} после flexible-connector`);
+    } else {
+      // Удаляем строки, если нет опции
+      for (let i = 0; i < 12; i += 1) {
+        worksheet.spliceRows(startRow, 1);
+      }
+    }
+
+    if (selectedData.selectedOptions.selectFlange) {
+      // Добавляем данные изображений из относительного пути
+      // ../images/flange/...
+
+      const imagePath1 = path.join(__dirname, '../images/flange/flange.jpg');
+      const image1Buffer = await fs.readFile(imagePath1);
+      const imageId1 = workbook.addImage({
+        buffer: image1Buffer,
+        extension: 'jpg',
+      });
+      worksheet.addImage(imageId1, {
+        tl: { col: 1, row: startRow + 2 },
+        br: { col: 3, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+
+      const imagePath2 = path.join(__dirname, '../images/flange/flange-dimensions.gif');
+      const image2Buffer = await fs.readFile(imagePath2);
+      const imageId2 = workbook.addImage({
+        buffer: image2Buffer,
+        extension: 'gif',
+      });
+      worksheet.addImage(imageId2, {
+        tl: { col: 4, row: startRow + 2 },
+        br: { col: 8, row: startRow + 8 },
+        editAs: 'oneCell',
+      });
+      startRow += 12;
+      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
+        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
+        startRow += 6;
+      }
+      console.log(`${startRow} после flange`);
+    } else {
+      // Удаляем строки, если нет опции
+      for (let i = 0; i < 12; i += 1) {
+        worksheet.spliceRows(startRow, 1);
+      }
+    }
+
     // Сохраняем результат в новый файл Excel
 
     outputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}`);
