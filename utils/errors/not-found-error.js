@@ -1,6 +1,6 @@
-const {
-  HTTP_STATUS_NOT_FOUND,
-} = require('http2').constants;
+const { constants } = require('http2');
+
+const { HTTP_STATUS_NOT_FOUND } = constants;
 
 class NotFoundError extends Error {
   constructor({ message }) {

@@ -2,7 +2,7 @@ const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;
 const Jimp = require('jimp');
-const NotFoundError = require('../utils/errors/not-found-error');
+const { NotFoundError } = require('../utils/errors/not-found-error');
 
 // Экспортируем функцию обработки запроса
 
@@ -70,16 +70,74 @@ module.exports.getDataSheet = async (req, res) => {
       WHERE model = ?
     `, [selectedData.fanName]);
 
+    const [optionsQuery] = await db.promise().query(`
+      SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD
+      FROM zfrfans.zfr_options
+      WHERE model = ?
+    `, [selectedData.fanName]);
+
     // Проверка наличия данных в ответе
 
-    if (techDataQuery.length === 0 || dimensionsQuery.length === 0) {
-      throw new NotFoundError({ message: 'Не удалось найти данные в базе данных' });
+    if (techDataQuery.length === 0) {
+      throw new NotFoundError({ message: 'Не удалось найти данные технических характеристик вентиляторов в базе' });
+    }
+
+    if (dimensionsQuery.length === 0) {
+      throw new NotFoundError({ message: 'Не удалось найти данные размеров вентиляторов в базе' });
+    }
+
+    if (optionsQuery.length === 0) {
+      throw new NotFoundError({ message: 'Не удалось найти названия опций в базе' });
     }
 
     // Извлекаем данные из ответов на SQL-запросы
 
     const mySqlTechData = techDataQuery[0];
     const mySqlDimensionsData = dimensionsQuery[0];
+    const fanOptions = optionsQuery[0];
+
+    // Делаем запрос на данные опций для выбранного вентилятора
+
+    const [socketDimensionsQuery] = await db.promise().query(`
+    SELECT
+      id,
+      TypeSize,
+      Model,
+      Hole_Spacing_D,
+      outer_socket_width_E,
+      Thread_Type_M,
+      inner_socket_width_G,
+      outer_platform_width_F,
+      height_H,
+      Weight_kg
+    FROM zfrfans.zrs_zrsi_zrn_dimensions
+    WHERE TypeSize IN (?, ?, ?)
+    `, [fanOptions.ZRS, fanOptions.ZRSI, fanOptions.ZRN]);
+
+    const [zrdZrcZrfDimensionsQuery] = await db.promise().query(`
+    SELECT
+      id,
+      TypeSize,
+      Model,
+      Inner_Diameter_d,
+      Middle_Diameter_e,
+      Inner_Diameter_corrected_D,
+      Height_h,
+      Length_L,
+      Diameter_D2,
+      Weight_kg
+    FROM zfrfans.zrd_zrc_zrf_dimensions
+    WHERE TypeSize IN (?, ?, ?)
+    `, [fanOptions.ZRD, fanOptions.ZRC, fanOptions.ZRF]);
+
+    // Проверка наличия данных в ответе
+    if (socketDimensionsQuery.length === 0) {
+      throw new NotFoundError({ message: 'Данные по монтажным стаканам не найдены в базе' });
+    }
+
+    if (zrdZrcZrfDimensionsQuery.length === 0) {
+      throw new NotFoundError({ message: 'Данные по опциям "фланец", "гибкая вставка", "обратный клапан" не найдены в базе' });
+    }
 
     // Загружаем шаблон Excel-файла
 
@@ -143,9 +201,10 @@ module.exports.getDataSheet = async (req, res) => {
       return `newDataSheet_${timestamp}.xlsx`;
     };
 
-    let startRow = 59; // Начальная строка для дополнительных опций
-    const maxSecondSheetRows = 99; // Максимальное кол-во строк для вставки опции на 2-м листе
-    const thirdSheetStartRows = 112; // Строка для начала контента третьего листа
+    let startRow = 57; // Начальная строка для дополнительных опций
+    const maxInstallationSecondSheetRows = 82; // Максимальное кол-во строк для вставки схемы
+    // на 2-м листе
+    const minThirdSheetStartRows = 104; // Строка для начала контента третьего листа
 
     if (selectedData.selectedOptions.selectFlatRoofSocket) {
       // Добавляем данные изображений из относительного пути ../images/flat-roof-socket/...
@@ -173,11 +232,17 @@ module.exports.getDataSheet = async (req, res) => {
         br: { col: 8, row: startRow + 8 },
         editAs: 'oneCell',
       });
+      // Добавляем данные об опции
+      const zrsDimensions = socketDimensionsQuery.find((dimension) => dimension.Model === 'ZRS');
+      const dataRow = startRow + 11;
+      worksheet.getCell(`B${dataRow}`).value = zrsDimensions.Hole_Spacing_D;
+      worksheet.getCell(`C${dataRow}`).value = zrsDimensions.outer_socket_width_E;
+      worksheet.getCell(`D${dataRow}`).value = zrsDimensions.Thread_Type_M;
+      worksheet.getCell(`E${dataRow}`).value = zrsDimensions.inner_socket_width_G;
+      worksheet.getCell(`F${dataRow}`).value = zrsDimensions.outer_platform_width_F;
+      worksheet.getCell(`G${dataRow}`).value = zrsDimensions.height_H;
+      worksheet.getCell(`H${dataRow}`).value = Math.round(zrsDimensions.Weight_kg);
       startRow += 12;
-      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
-        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
-        startRow += 6;
-      }
       console.log(`${startRow} после flat-roof-socket`);
     } else {
       // Удаляем строки, если нет опции
@@ -213,11 +278,17 @@ module.exports.getDataSheet = async (req, res) => {
         br: { col: 8, row: startRow + 8 },
         editAs: 'oneCell',
       });
+      // Добавляем данные об опции
+      const zrsiDimensions = socketDimensionsQuery.find((dimension) => dimension.Model === 'ZRSI');
+      const dataRow = startRow + 11;
+      worksheet.getCell(`B${dataRow}`).value = zrsiDimensions.Hole_Spacing_D;
+      worksheet.getCell(`C${dataRow}`).value = zrsiDimensions.outer_socket_width_E;
+      worksheet.getCell(`D${dataRow}`).value = zrsiDimensions.Thread_Type_M;
+      worksheet.getCell(`E${dataRow}`).value = zrsiDimensions.inner_socket_width_G;
+      worksheet.getCell(`F${dataRow}`).value = zrsiDimensions.outer_platform_width_F;
+      worksheet.getCell(`G${dataRow}`).value = zrsiDimensions.height_H;
+      worksheet.getCell(`H${dataRow}`).value = Math.round(zrsiDimensions.Weight_kg);
       startRow += 12;
-      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
-        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
-        startRow += 6;
-      }
       console.log(`${startRow} после flat-roof-socket-silencer`);
     } else {
       // Удаляем строки, если нет опции
@@ -242,22 +313,28 @@ module.exports.getDataSheet = async (req, res) => {
         editAs: 'oneCell',
       });
 
-      const imagePath2 = path.join(__dirname, '../images/slant-roof-socket-silencer/slant-roof-socket-silencer-dimensions.gif');
+      const imagePath2 = path.join(__dirname, '../images/slant-roof-socket-silencer/slant-roof-socket-silencer-dimensions.png');
       const image2Buffer = await fs.readFile(imagePath2);
       const imageId2 = workbook.addImage({
         buffer: image2Buffer,
-        extension: 'gif',
+        extension: 'png',
       });
       worksheet.addImage(imageId2, {
         tl: { col: 4, row: startRow + 2 },
         br: { col: 8, row: startRow + 8 },
         editAs: 'oneCell',
       });
+      // Добавляем данные об опции
+      const zrnDimensions = socketDimensionsQuery.find((dimension) => dimension.Model === 'ZRN');
+      const dataRow = startRow + 11;
+      worksheet.getCell(`B${dataRow}`).value = zrnDimensions.Hole_Spacing_D;
+      worksheet.getCell(`C${dataRow}`).value = zrnDimensions.outer_socket_width_E;
+      worksheet.getCell(`D${dataRow}`).value = zrnDimensions.Thread_Type_M;
+      worksheet.getCell(`E${dataRow}`).value = zrnDimensions.inner_socket_width_G;
+      worksheet.getCell(`F${dataRow}`).value = zrnDimensions.outer_platform_width_F;
+      worksheet.getCell(`G${dataRow}`).value = zrnDimensions.height_H;
+      worksheet.getCell(`H${dataRow}`).value = Math.round(zrnDimensions.Weight_kg);
       startRow += 12;
-      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
-        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
-        startRow += 6;
-      }
       console.log(`${startRow} после slant-roof-socket-silencer`);
     } else {
       // Удаляем строки, если нет опции
@@ -293,11 +370,15 @@ module.exports.getDataSheet = async (req, res) => {
         br: { col: 8, row: startRow + 8 },
         editAs: 'oneCell',
       });
+      // Добавляем данные об опции
+      const zrdDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model === 'ZRD');
+      const dataRow = startRow + 11;
+      worksheet.getCell(`B${dataRow}`).value = zrdDimensions.Middle_Diameter_e;
+      worksheet.getCell(`C${dataRow}`).value = zrdDimensions.Diameter_D2;
+      worksheet.getCell(`D${dataRow}`).value = zrdDimensions.Inner_Diameter_corrected_D;
+      worksheet.getCell(`E${dataRow}`).value = zrdDimensions.Length_L;
+      worksheet.getCell(`H${dataRow}`).value = Math.round(zrdDimensions.Weight_kg);
       startRow += 12;
-      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
-        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
-        startRow += 6;
-      }
       console.log(`${startRow} после back-draft-damper`);
     } else {
       // Удаляем строки, если нет опции
@@ -332,11 +413,14 @@ module.exports.getDataSheet = async (req, res) => {
         br: { col: 8, row: startRow + 8 },
         editAs: 'oneCell',
       });
+      // Добавляем данные об опции
+      const zrcDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model === 'ZRC');
+      const dataRow = startRow + 11;
+      worksheet.getCell(`B${dataRow}`).value = zrcDimensions.Inner_Diameter_d;
+      worksheet.getCell(`C${dataRow}`).value = zrcDimensions.Middle_Diameter_e;
+      worksheet.getCell(`D${dataRow}`).value = zrcDimensions.Inner_Diameter_corrected_D;
+      worksheet.getCell(`H${dataRow}`).value = Math.round(zrcDimensions.Weight_kg);
       startRow += 12;
-      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
-        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
-        startRow += 6;
-      }
       console.log(`${startRow} после flexible-connector`);
     } else {
       // Удаляем строки, если нет опции
@@ -372,17 +456,55 @@ module.exports.getDataSheet = async (req, res) => {
         br: { col: 8, row: startRow + 8 },
         editAs: 'oneCell',
       });
+      // Добавляем данные об опции
+      const zrfDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model === 'ZRF');
+      const dataRow = startRow + 11;
+      worksheet.getCell(`B${dataRow}`).value = zrfDimensions.Inner_Diameter_d;
+      worksheet.getCell(`C${dataRow}`).value = zrfDimensions.Middle_Diameter_e;
+      worksheet.getCell(`D${dataRow}`).value = zrfDimensions.Inner_Diameter_corrected_D;
+      worksheet.getCell(`E${dataRow}`).value = zrfDimensions.Height_h;
+      worksheet.getCell(`H${dataRow}`).value = Math.round(zrfDimensions.Weight_kg);
       startRow += 12;
-      if (startRow >= maxSecondSheetRows && startRow <= thirdSheetStartRows) {
-        worksheet.spliceRows(startRow, 0, [], [], [], [], [], []);
-        startRow += 6;
-      }
       console.log(`${startRow} после flange`);
     } else {
       // Удаляем строки, если нет опции
       for (let i = 0; i < 12; i += 1) {
         worksheet.spliceRows(startRow, 1);
       }
+    }
+    // Перенос данных на третий лист, когда опций 3 (иначе не влезает на один лист с опциями схема)
+    if (startRow >= maxInstallationSecondSheetRows && startRow <= minThirdSheetStartRows) {
+      worksheet.spliceRows(startRow, 0, [], [], [], [], [], [], [], [], [], [], [], []);
+      startRow += 12;
+    }
+
+    // Объединяем надпись "схемы" в одну ячейку - Баг библиотеки с разбивкой ячейки
+    worksheet.mergeCells(`A${startRow + 1}:K${startRow + 1}`);
+
+    const installationImagePath = path.join(__dirname, '../images/installation.png');
+    const installationImageBuffer = await fs.readFile(installationImagePath);
+    const installationImageId = workbook.addImage({
+      buffer: installationImageBuffer,
+      extension: 'png',
+    });
+    worksheet.addImage(installationImageId, {
+      tl: { col: 1, row: startRow + 2 },
+      br: { col: 5, row: startRow + 25 },
+      editAs: 'oneCell',
+    });
+
+    // Удаляем заголовок "опции", если опций нет
+    if (
+      !selectedData.selectedOptions.selectFlatRoofSocket
+      && !selectedData.selectedOptions.selectFlatRoofSocketSilencer
+      && !selectedData.selectedOptions.selectSlantRoofSocketSilencer
+      && !selectedData.selectedOptions.selectBackDraftDamper
+      && !selectedData.selectedOptions.selectFlexibleConnector
+      && !selectedData.selectedOptions.selectFlange
+    ) {
+      // Объединяем надпись "схемы" в одну ячейку - Баг библиотеки с разбивкой ячейки
+      worksheet.spliceRows(startRow - 1, 1);
+      worksheet.mergeCells(`A${startRow}:K${startRow}`);
     }
 
     // Сохраняем результат в новый файл Excel
