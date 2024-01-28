@@ -6,7 +6,7 @@ const { NotFoundError } = require('../utils/errors/not-found-error');
 
 // Экспортируем функцию обработки запроса
 
-module.exports.getDataSheet = async (req, res) => {
+module.exports.getDataSheet = async (req, res, next) => {
   const templatePath = path.join(__dirname, '../template/data-worksheet.xlsx');
   const { db } = req;
   const selectedData = req.body.historyItem;
@@ -525,9 +525,8 @@ module.exports.getDataSheet = async (req, res) => {
 
     res.write(fileContent, 'binary');
     res.end();
-  } catch (error) {
-    console.error('Ошибка выполнения SQL-запроса:', error);
-    res.status(500).send('Внутренняя ошибка сервера');
+  } catch (e) {
+    next(e);
   } finally {
     // Перемещаем код удаления файла за пределы блока catch
     try {
