@@ -4,11 +4,13 @@ const fs = require('fs').promises;
 const Jimp = require('jimp');
 const { NotFoundError } = require('../utils/errors/not-found-error');
 
+const { MYSQL_FAN_DATABASE } = process.env;
+
 // Экспортируем функцию обработки запроса
 
 module.exports.getDataSheet = async (req, res, next) => {
   const templatePath = path.join(__dirname, '../template/data-worksheet.xlsx');
-  const { db } = req;
+  const { fanDataDb } = req;
   const selectedData = req.body.historyItem;
 
   // Создаем изображение из base64
@@ -37,7 +39,7 @@ module.exports.getDataSheet = async (req, res, next) => {
   try {
     // Получаем данные из базы mySQL
 
-    const [techDataQuery] = await db.promise().query(`
+    const [techDataQuery] = await fanDataDb.promise().query(`
       SELECT
         id,
         model,
@@ -51,11 +53,11 @@ module.exports.getDataSheet = async (req, res, next) => {
         airflow_temperature_range,
         capacitor_mF,
         electrical_connections_scheme
-      FROM zfrfans.zfr_data
+      FROM ${MYSQL_FAN_DATABASE}.zfr_data
       WHERE model = ?
     `, [selectedData.fanName]);
 
-    const [dimensionsQuery] = await db.promise().query(`
+    const [dimensionsQuery] = await fanDataDb.promise().query(`
       SELECT
         id,
         model,
@@ -66,13 +68,13 @@ module.exports.getDataSheet = async (req, res, next) => {
         d,
         l3,
         kg
-      FROM zfrfans.zfr_dimensions
+      FROM ${MYSQL_FAN_DATABASE}.zfr_dimensions
       WHERE model = ?
     `, [selectedData.fanName]);
 
-    const [optionsQuery] = await db.promise().query(`
+    const [optionsQuery] = await fanDataDb.promise().query(`
       SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD
-      FROM zfrfans.zfr_options
+      FROM ${MYSQL_FAN_DATABASE}.zfr_options
       WHERE model = ?
     `, [selectedData.fanName]);
 
@@ -98,7 +100,7 @@ module.exports.getDataSheet = async (req, res, next) => {
 
     // Делаем запрос на данные опций для выбранного вентилятора
 
-    const [socketDimensionsQuery] = await db.promise().query(`
+    const [socketDimensionsQuery] = await fanDataDb.promise().query(`
     SELECT
       id,
       TypeSize,
@@ -110,11 +112,11 @@ module.exports.getDataSheet = async (req, res, next) => {
       outer_platform_width_F,
       height_H,
       Weight_kg
-    FROM zfrfans.zrs_zrsi_zrn_dimensions
+    FROM ${MYSQL_FAN_DATABASE}.zrs_zrsi_zrn_dimensions
     WHERE TypeSize IN (?, ?, ?)
     `, [fanOptions.ZRS, fanOptions.ZRSI, fanOptions.ZRN]);
 
-    const [zrdZrcZrfDimensionsQuery] = await db.promise().query(`
+    const [zrdZrcZrfDimensionsQuery] = await fanDataDb.promise().query(`
     SELECT
       id,
       TypeSize,
@@ -126,7 +128,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       Length_L,
       Diameter_D2,
       Weight_kg
-    FROM zfrfans.zrd_zrc_zrf_dimensions
+    FROM ${MYSQL_FAN_DATABASE}.zrd_zrc_zrf_dimensions
     WHERE TypeSize IN (?, ?, ?)
     `, [fanOptions.ZRD, fanOptions.ZRC, fanOptions.ZRF]);
 

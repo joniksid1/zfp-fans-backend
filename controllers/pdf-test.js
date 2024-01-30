@@ -1,4 +1,3 @@
-const http = require('http');
 const fs = require('fs');
 const axios = require('axios');
 const FormData = require('form-data');
@@ -6,7 +5,7 @@ const FormData = require('form-data');
 module.exports.getPdfFromXlsx = async (req, res) => {
   try {
     // Чтение Excel-файла с диска
-    const excelBuffer = fs.readFileSync('./pdf-test/test.xlsx');
+    const excelBuffer = fs.readFileSync('../zfr-fan/pdf-test/test.xlsx');
 
     // Создаем объект FormData и добавляем Excel-файл
     const formData = new FormData();
@@ -18,7 +17,6 @@ module.exports.getPdfFromXlsx = async (req, res) => {
     // Отправляем POST-запрос на микросервис с использованием Axios
     const response = await axios.post('http://192.168.97.98:443/Pdf', formData, {
       headers: {
-        'accept': 'text/plain',
         ...formData.getHeaders(),
       },
       responseType: 'arraybuffer',

@@ -1,15 +1,17 @@
 const { NotFoundError } = require('../utils/errors/not-found-error');
 
+const { MYSQL_FAN_DATABASE } = process.env;
+
 // Экспортируем функцию обработки запроса
 
 module.exports.getFanModels = async (req, res, next) => {
-  const { db } = req;
+  const { fanDataDb } = req;
 
   try {
     // Получаем данные из базы mySQL
-    const [allModelsQuery] = await db.promise().query(`
+    const [allModelsQuery] = await fanDataDb.promise().query(`
       SELECT DISTINCT model
-      FROM zfrfans.zfr_data;
+      FROM ${MYSQL_FAN_DATABASE}.zfr_data;
     `);
     if (allModelsQuery.length === 0) {
       throw new NotFoundError({ message: 'Не удалось найти данные названий вентиляторов в базе' });
@@ -28,7 +30,7 @@ module.exports.getFanModels = async (req, res, next) => {
 };
 
 module.exports.getFanDataPoints = async (req, res, next) => {
-  const { db } = req;
+  const { fanDataDb } = req;
   const fanModels = [
     'zfr_1_9_2e',
     'zfr_2_25_2e',
@@ -50,9 +52,9 @@ module.exports.getFanDataPoints = async (req, res, next) => {
   try {
     // Используем Promise.all для выполнения асинхронных запросов к базе данных
     const fanDataPromises = fanModels.map(async (fanModel) => {
-      const [fanDataQuery] = await db.promise().query(`
+      const [fanDataQuery] = await fanDataDb.promise().query(`
         SELECT x, y
-        FROM zfrfans.${fanModel}_dataset;
+        FROM ${MYSQL_FAN_DATABASE}.${fanModel}_dataset;
       `);
 
       if (fanDataQuery.length === 0) {
