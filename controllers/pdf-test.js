@@ -5,7 +5,7 @@ const FormData = require('form-data');
 module.exports.getPdfFromXlsx = async (req, res) => {
   try {
     // Чтение Excel-файла с диска
-    const excelBuffer = fs.readFileSync('../zfr-fan/pdf-test/test.xlsx');
+    const excelBuffer = fs.readFileSync('./pdf-test/test2.xlsx');
 
     // Создаем объект FormData и добавляем Excel-файл
     const formData = new FormData();
