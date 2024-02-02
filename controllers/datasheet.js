@@ -113,7 +113,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       height_H,
       Weight_kg
     FROM ${MYSQL_FAN_DATABASE}.zrs_zrsi_zrn_dimensions
-    WHERE TypeSize IN (?, ?, ?)
+    WHERE Model IN (?, ?, ?)
     `, [fanOptions.ZRS, fanOptions.ZRSI, fanOptions.ZRN]);
 
     const [zrdZrcZrfDimensionsQuery] = await fanDataDb.promise().query(`
@@ -129,7 +129,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       Diameter_D2,
       Weight_kg
     FROM ${MYSQL_FAN_DATABASE}.zrd_zrc_zrf_dimensions
-    WHERE TypeSize IN (?, ?, ?)
+    WHERE Model IN (?, ?, ?)
     `, [fanOptions.ZRD, fanOptions.ZRC, fanOptions.ZRF]);
 
     // Проверка наличия данных в ответе
@@ -237,7 +237,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrsDimensions = socketDimensionsQuery.find((dimension) => dimension.Model === 'ZRS');
+      const zrsDimensions = socketDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRS'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrsDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrsDimensions.Hole_Spacing_D;
@@ -285,7 +285,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrsiDimensions = socketDimensionsQuery.find((dimension) => dimension.Model === 'ZRSI');
+      const zrsiDimensions = socketDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRSI'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrsiDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrsiDimensions.Hole_Spacing_D;
@@ -333,7 +333,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrnDimensions = socketDimensionsQuery.find((dimension) => dimension.Model === 'ZRN');
+      const zrnDimensions = socketDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRN'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrnDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrnDimensions.Hole_Spacing_D;
@@ -381,7 +381,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrdDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model === 'ZRD');
+      const zrdDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRD'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrdDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrdDimensions.Middle_Diameter_e;
@@ -426,7 +426,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrcDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model === 'ZRC');
+      const zrcDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRC'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrcDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrcDimensions.Inner_Diameter_d;
@@ -471,7 +471,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrfDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model === 'ZRF');
+      const zrfDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRF'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrfDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrfDimensions.Inner_Diameter_d;
