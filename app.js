@@ -1,6 +1,5 @@
 const express = require('express');
 require('dotenv').config();
-const { createConnection } = require('mysql2');
 const { errors } = require('celebrate');
 const cors = require('cors');
 const { router } = require('./routes/root');
@@ -10,44 +9,7 @@ const { requestLogger, errorLogger } = require('./middlewares/logger');
 
 const {
   PORT = '3000',
-  MYSQL_HOST,
-  MYSQL_USER,
-  MYSQL_PASSWORD,
-  MYSQL_FAN_DATABASE,
-  MYSQL_PRICE_DATABASE,
 } = process.env;
-
-// Подключение MySQL к БД вентиляторов
-const fanDataDb = createConnection({
-  host: MYSQL_HOST,
-  user: MYSQL_USER,
-  password: MYSQL_PASSWORD,
-  database: MYSQL_FAN_DATABASE,
-});
-
-fanDataDb.connect((err) => {
-  if (err) {
-    console.error('Ошибка подключения к базе данных вентиляторов MySQL:', err);
-  } else {
-    console.log('Подключено к базе данных вентиляторов MySQL');
-  }
-});
-
-// Подключение MySQL к БД цен
-const priceDb = createConnection({
-  host: MYSQL_HOST,
-  user: MYSQL_USER,
-  password: MYSQL_PASSWORD,
-  database: MYSQL_PRICE_DATABASE,
-});
-
-priceDb.connect((err) => {
-  if (err) {
-    console.error('Ошибка подключения к базе данных цен MySQL:', err);
-  } else {
-    console.log('Подключено к базе данных цен MySQL');
-  }
-});
 
 const app = express();
 
@@ -65,11 +27,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
 
 // Передаём соединения с MySQL корневому маршруту
-app.use('/', (req, res, next) => {
-  req.fanDataDb = fanDataDb;
-  req.priceDb = priceDb;
-  next();
-}, router);
+app.use('/', router);
 
 app.use('*', () => {
   throw new NotFoundError({ message: 'Страница не найдена' });

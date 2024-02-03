@@ -2,6 +2,7 @@ const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;
 const Jimp = require('jimp');
+const { fanDataDb } = require('../utils/db');
 const { NotFoundError } = require('../utils/errors/not-found-error');
 
 const { MYSQL_FAN_DATABASE } = process.env;
@@ -10,7 +11,6 @@ const { MYSQL_FAN_DATABASE } = process.env;
 
 module.exports.getDataSheet = async (req, res, next) => {
   const templatePath = path.join(__dirname, '../template/data-worksheet.xlsx');
-  const { fanDataDb } = req;
   const selectedData = req.body.historyItem;
 
   // Создаем изображение из base64
@@ -39,7 +39,7 @@ module.exports.getDataSheet = async (req, res, next) => {
   try {
     // Получаем данные из базы mySQL
 
-    const [techDataQuery] = await fanDataDb.promise().query(`
+    const [techDataQuery] = await fanDataDb.query(`
       SELECT
         id,
         model,
@@ -57,7 +57,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       WHERE model = ?
     `, [selectedData.fanName]);
 
-    const [dimensionsQuery] = await fanDataDb.promise().query(`
+    const [dimensionsQuery] = await fanDataDb.query(`
       SELECT
         id,
         model,
@@ -72,7 +72,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       WHERE model = ?
     `, [selectedData.fanName]);
 
-    const [optionsQuery] = await fanDataDb.promise().query(`
+    const [optionsQuery] = await fanDataDb.query(`
       SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD
       FROM ${MYSQL_FAN_DATABASE}.zfr_options
       WHERE model = ?
@@ -100,7 +100,7 @@ module.exports.getDataSheet = async (req, res, next) => {
 
     // Делаем запрос на данные опций для выбранного вентилятора
 
-    const [socketDimensionsQuery] = await fanDataDb.promise().query(`
+    const [socketDimensionsQuery] = await fanDataDb.query(`
     SELECT
       id,
       TypeSize,
@@ -116,7 +116,7 @@ module.exports.getDataSheet = async (req, res, next) => {
     WHERE Model IN (?, ?, ?)
     `, [fanOptions.ZRS, fanOptions.ZRSI, fanOptions.ZRN]);
 
-    const [zrdZrcZrfDimensionsQuery] = await fanDataDb.promise().query(`
+    const [zrdZrcZrfDimensionsQuery] = await fanDataDb.query(`
     SELECT
       id,
       TypeSize,

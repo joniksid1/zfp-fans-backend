@@ -1,6 +1,8 @@
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;
+const { fanDataDb, priceDb } = require('../utils/db');
+
 const { NotFoundError } = require('../utils/errors/not-found-error');
 
 const { MYSQL_FAN_DATABASE } = process.env;
@@ -9,7 +11,6 @@ const { MYSQL_FAN_DATABASE } = process.env;
 
 module.exports.getCommercialOffer = async (req, res, next) => {
   const templatePath = path.join(__dirname, '../template/commercial-offer.xlsx');
-  const { priceDb, fanDataDb } = req;
   const selectedData = req.body.historyItem;
 
   let outputPath;
@@ -25,13 +26,13 @@ module.exports.getCommercialOffer = async (req, res, next) => {
 
     // Получаем данные из базы вентиляторов mySQL (по названиям опций)
     await Promise.all(selectedData.map(async (data) => {
-      const optionsQuery = await fanDataDb.promise().query(`
+      const optionsQuery = await fanDataDb.query(`
         SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD, Regulator
         FROM ${MYSQL_FAN_DATABASE}.zfr_options
         WHERE model = ?
       `, [data.fanName]);
 
-      const [priceDbData] = await priceDb.promise().query(`
+      const [priceDbData] = await priceDb.query(`
         SELECT *
         FROM Price
         WHERE Model IN (?, ?, ?, ?, ?, ?, ?, ?)
