@@ -17,9 +17,9 @@ const createPool = (database) => {
     password: MYSQL_PASSWORD,
     database,
     waitForConnections: true,
-    connectionLimit: 30,
+    connectionLimit: 5,
     queueLimit: 0,
-    connectTimeout: 20000,
+    connectTimeout: 60000,
   });
 
   // Отправляем запрос для поддержания активного соединения
@@ -32,6 +32,7 @@ const createPool = (database) => {
       if (error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ECONNRESET') {
         // В случае разрыва соединения, пересоздаем пул
         await recreatePool(pool, database);
+        return; // Важно вернуться, чтобы избежать отправки запроса для закрытого соединения
       }
     } finally {
       if (connection) {
@@ -57,7 +58,7 @@ let priceDb = createPool(MYSQL_PRICE_DATABASE);
 recreatePool = async (pool, dbName) => {
   try {
     // Закрываем старое соединение
-    await pool.destroy();
+    await pool.end();
 
     // Создаем новый пул
     const newPool = await createPool(dbName);
@@ -77,8 +78,11 @@ recreatePool = async (pool, dbName) => {
 
 // Обработка событий завершения работы сервера для корректного закрытия соединений
 process.on('SIGINT', async () => {
-  await fanDataDb.end();
-  await priceDb.end();
+  await Promise.all([
+    fanDataDb.end(),
+    priceDb.end(),
+  ]);
+  // Завершаем процесс
   process.exit();
 });
 

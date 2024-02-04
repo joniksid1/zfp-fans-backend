@@ -68,9 +68,9 @@ module.exports.getFanDataPoints = async (req, res, next) => {
 
         // Выполняем запрос
         const [fanDataQuery] = await connection.execute(`
-      SELECT x, y
-      FROM ${MYSQL_FAN_DATABASE}.${fanModel}_dataset;
-    `);
+          SELECT x, y
+          FROM ${MYSQL_FAN_DATABASE}.${fanModel}_dataset;
+        `);
 
         if (fanDataQuery.length === 0) {
           throw new NotFoundError({ message: `Не удалось найти данные вентилятора ${fanModel} в базе` });
@@ -81,8 +81,6 @@ module.exports.getFanDataPoints = async (req, res, next) => {
           model: fanModel,
           data: fanDataQuery.map((result) => ({ x: result.x, y: result.y })),
         });
-      } catch (e) {
-        return e; // Возвращаем ошибку для последующей проверки
       } finally {
         // Закрываем соединение после использования
         if (connection) {
@@ -103,6 +101,9 @@ module.exports.getFanDataPoints = async (req, res, next) => {
       fanData: fanDataResults,
     });
   } catch (e) {
+    if (connection) {
+      await connection.release();
+    }
     next(e);
   }
 };

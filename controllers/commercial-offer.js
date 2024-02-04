@@ -71,8 +71,12 @@ module.exports.getCommercialOffer = async (req, res, next) => {
       return `newDataSheet_${timestamp}.xlsx`;
     };
     // let startRow = 57; // Начальная строка
-    // if (selectedData.selectedOptions.selectFlatRoofSocket) {
-    // }
+
+    if (selectedData.selectedOptions.selectFlatRoofSocket) {
+      worksheet.addRow([
+
+      ]);
+    }
     // if (selectedData.selectedOptions.selectFlatRoofSocketSilencer) {
     // }
     // if (selectedData.selectedOptions.selectSlantRoofSocketSilencer) {
