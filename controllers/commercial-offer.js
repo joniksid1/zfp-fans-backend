@@ -24,8 +24,21 @@ module.exports.getCommercialOffer = async (req, res, next) => {
     // Получаем лист Excel
     const worksheet = workbook.getWorksheet('ТКП');
 
+    // Начало вставки данных
+    const startRow = 26;
+    let item = 0; // Порядковый номер вставляемой системы
+
+    // Считаем необходимое кол-во строк
+    let currentRow = startRow;
+
     // Получаем данные из базы вентиляторов mySQL (по названиям опций)
-    await Promise.all(selectedData.map(async (data) => {
+    await Promise.all(selectedData.map(async (data, index) => {
+      console.log(index, item);
+      // if (index === item) {
+      //   console.log(item, index);
+      //   worksheet.spliceRows(currentRow, 0, []);
+      //   currentRow += 1;
+      // }
       const optionsQuery = await fanDataDb.query(`
         SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD, Regulator
         FROM ${MYSQL_FAN_DATABASE}.zfr_options
@@ -33,58 +46,128 @@ module.exports.getCommercialOffer = async (req, res, next) => {
       `, [data.fanName]);
 
       const [priceDbData] = await priceDb.query(`
-        SELECT *
-        FROM Price
-        WHERE Model IN (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
+      SELECT *
+      FROM Price
+      WHERE Model IN (?, ?, ?, ?, ?, ?, ?, ?);
+    `, [
         data.fanName,
-        optionsQuery.ZRS,
-        optionsQuery.ZRSI,
-        optionsQuery.ZRN,
-        optionsQuery.ZRF,
-        optionsQuery.ZRC,
-        optionsQuery.ZRD,
-        optionsQuery.Regulator,
+        optionsQuery[0][0].ZRS,
+        optionsQuery[0][0].ZRSI,
+        optionsQuery[0][0].ZRN,
+        optionsQuery[0][0].ZRF,
+        optionsQuery[0][0].ZRC,
+        optionsQuery[0][0].ZRD,
+        optionsQuery[0][0].Regulator,
       ]);
 
       if (priceDbData.length === 0 || optionsQuery.length === 0) {
         throw new NotFoundError({ message: 'Не удалось найти данные в базе' });
       }
 
-      worksheet.addRow([
-        data.systemNameValue || 0,
-        data.fanName || 0,
-        data.flowRateValue || 0,
-        data.staticPressureValue || 0,
-        priceDbData[0].ModelTKP || 0, // использование 0, если значение null или undefined
-        priceDbData[0].Price || 0,
-        priceDbData[0].NSKod || 0,
-      ]);
+      // Функция добавления заголовка с названием системы и порядковым номером
+
+      item += 1;
+
+      const addHeader = () => {
+        // Вставляем строки для одной единицы
+        worksheet.duplicateRow(currentRow, 1, true);
+
+        worksheet.mergeCells(`B${currentRow}:E${currentRow}`);
+        worksheet.getCell(`A${currentRow}`).value = {
+          richText: [
+            { text: `${item}`, font: { name: 'Arial', size: 11, bold: true } },
+          ],
+        };
+        worksheet.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'center' };
+
+        worksheet.getCell(`B${currentRow}`).value = {
+          richText: [
+            { text: `${data.systemNameValue} (L=${data.flowRateValue}м3/ч, Рс=${data.staticPressureValue}Па)`, font: { name: 'Arial', size: 11, bold: true } },
+          ],
+        };
+        worksheet.getRow(currentRow).height = 47;
+      };
+
+      addHeader();
+
+      // функция добавления данных для элементов
+
+      const addData = (priceData) => {
+        // Объединяем ячейки для названия - пока что ломает код, если в ТКП больше одной системы
+        // worksheet.mergeCells(`B${currentRow + 1}:E${currentRow + 1}`);
+
+        // Вставляем следующие данные на строке
+        worksheet.getCell(`B${currentRow + 1}`).value = priceData.ModelTKP;
+
+        worksheet.getCell(`H${currentRow + 1}`).value = priceData.Price;
+        worksheet.getCell(`H${currentRow + 1}`).numFmt = '#,##0.00';
+
+        worksheet.getCell(`I${currentRow + 1}`).value = 0;
+        worksheet.getCell(`I${currentRow + 1}`).numFmt = '#,#0.0%';
+
+        worksheet.getCell(`L${currentRow + 1}`).value = {
+          formula: `H${currentRow + 1}*(1-I${currentRow + 1})`,
+          result: (priceData.Price * (1 - 0)),
+        };
+
+        worksheet.getCell(`M${currentRow + 1}`).value = 1;
+        worksheet.getCell(`M${currentRow + 1}`).style.font = { name: 'Arial', size: 11, color: { argb: '0000FF' } };
+
+        worksheet.getCell(`P${currentRow + 1}`).value = {
+          formula: `L${currentRow + 1}*M${currentRow + 1}`,
+          result: (priceData.Price),
+        };
+
+        worksheet.getCell(`Q${currentRow + 1}`).value = priceData.NSKod;
+
+        // Центрирование контента для остальных ячеек на строке
+        ['H', 'I', 'M', 'Q'].forEach((column) => {
+          worksheet.getCell(`${column}${currentRow + 1}`).alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+
+        currentRow += 1;
+      };
+
+      addData(priceDbData[0]);
+
+      if (data.selectedOptions.selectFlatRoofSocket) {
+        worksheet.duplicateRow(currentRow, 1, true);
+        addData(priceDbData[1]);
+      }
+
+      if (data.selectedOptions.selectFlatRoofSocketSilencer) {
+        worksheet.duplicateRow(currentRow, 1, true);
+        addData(priceDbData[2]);
+      }
+
+      if (data.selectedOptions.selectSlantRoofSocketSilencer) {
+        worksheet.duplicateRow(currentRow, 1, true);
+        addData(priceDbData[3]);
+      }
+
+      if (data.selectedOptions.selectBackDraftDamper) {
+        worksheet.duplicateRow(currentRow, 1, true);
+        addData(priceDbData[4]);
+      }
+
+      if (data.selectedOptions.selectFlexibleConnector) {
+        worksheet.duplicateRow(currentRow, 1, true);
+        addData(priceDbData[5]);
+      }
+
+      if (data.selectedOptions.selectFlange) {
+        worksheet.duplicateRow(currentRow, 1, true);
+        addData(priceDbData[6]);
+      }
     }));
 
-    // Заполняем данные с фронтенда в ячейки
-    // worksheet.getCell('E11').value = ;
     // Генерация уникальных имён файлов для предотвращения конфликтов при удалении
 
     const generateUniqueFileName = () => {
       const timestamp = new Date().getTime();
       return `newDataSheet_${timestamp}.xlsx`;
     };
-    // let startRow = 57; // Начальная строка
 
-    if (selectedData.selectedOptions.selectFlatRoofSocket) {
-      worksheet.addRow([
-
-      ]);
-    }
-    // if (selectedData.selectedOptions.selectFlatRoofSocketSilencer) {
-    // }
-    // if (selectedData.selectedOptions.selectSlantRoofSocketSilencer) {
-    // }
-    // if (selectedData.selectedOptions.selectFlexibleConnector) {
-    // }
-    // if (selectedData.selectedOptions.selectFlange) {
-    // };
     // Сохраняем результат в новый файл Excel
 
     outputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}`);
