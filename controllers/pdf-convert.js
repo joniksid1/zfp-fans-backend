@@ -24,7 +24,7 @@ module.exports.convertToPdf = async (req, res, next) => {
     libre.convert(xlsxBuf, ext, undefined, (convertErr, pdfBuf) => {
       if (convertErr) {
         console.error('Ошибка при конвертации файла:', convertErr);
-        return res.status(500).send('Ошибка при конвертации файла');
+        next(convertErr);
       }
       // Здесь у вас есть буфер PDF, который вы можете записать в файл
       fs.writeFile(outputPath, pdfBuf)

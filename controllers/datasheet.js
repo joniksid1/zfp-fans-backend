@@ -2,6 +2,7 @@ const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;
 const Jimp = require('jimp');
+const libre = require('libreoffice-convert');
 const { fanDataDb } = require('../utils/db');
 const { NotFoundError } = require('../utils/errors/not-found-error');
 
@@ -537,23 +538,45 @@ module.exports.getDataSheet = async (req, res, next) => {
     }
 
     // Сохраняем результат в новый файл Excel
-
     outputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}`);
     await workbook.xlsx.writeFile(outputPath);
 
-    // Читаем содержимое файла в бинарном формате
+    const xlsxBuf = await fs.readFile(outputPath);
 
-    const fileContent = await fs.readFile(outputPath, 'binary');
+    // Конвертируем в PDF
+    libre.convert(xlsxBuf, '.pdf', undefined, async (convertErr, pdfBuf) => {
+      if (convertErr) {
+        console.error('Ошибка при конвертации файла:', convertErr);
+        next(convertErr);
+        return;
+      }
 
-    // Устанавливаем заголовки Content-Type и Content-Disposition
+      try {
+        // Сохраняем PDF на диск
+        const pdfOutputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}.pdf`);
+        await fs.writeFile(pdfOutputPath, pdfBuf);
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=ZFR-Datasheet.xlsx');
+        console.log('Файл успешно сконвертирован в PDF и сохранен на диск:', pdfOutputPath);
 
-    // Передаем содержимое файла в ответ
+        // Устанавливаем заголовки Content-Type и Content-Disposition для PDF
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=ZFR-Datasheet.pdf');
 
-    res.write(fileContent, 'binary');
-    res.end();
+        // Передаем содержимое файла PDF в ответ
+        res.write(pdfBuf, 'binary');
+        res.end();
+
+        try {
+          await fs.unlink(pdfOutputPath);
+          console.log('Файл PDF успешно удален');
+        } catch (unlinkPdfError) {
+          console.error('Ошибка удаления файла PDF:', unlinkPdfError);
+        }
+      } catch (writeFileErr) {
+        console.error('Ошибка при записи файла PDF на диск:', writeFileErr);
+        res.status(500).send('Ошибка при записи файла PDF');
+      }
+    });
   } catch (e) {
     next(e);
   } finally {
