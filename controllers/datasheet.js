@@ -197,6 +197,9 @@ module.exports.getDataSheet = async (req, res, next) => {
       editAs: 'oneCell',
     });
 
+    // Это добавляет разрыв страницы после указанной строки
+    worksheet.getRow(55).addPageBreak();
+
     // Генерация уникальных имён файлов для предотвращения конфликтов при удалении
 
     const generateUniqueFileName = () => {
@@ -490,8 +493,14 @@ module.exports.getDataSheet = async (req, res, next) => {
     }
     // Перенос данных на третий лист, когда опций 3 (иначе не влезает на один лист с опциями схема)
     if (startRow >= maxInstallationSecondSheetRows && startRow <= minThirdSheetStartRows) {
-      worksheet.spliceRows(startRow, 0, [], [], [], [], [], [], [], [], [], [], [], []);
-      startRow += 12;
+      // Это добавляет разрыв страницы после указанной строки
+      worksheet.getRow(startRow).addPageBreak();
+    }
+
+    // Перенос данных на третий лист, когда опций больше 3 (иначе делает его на одну строку раньше)
+    if (startRow >= maxInstallationSecondSheetRows && startRow >= minThirdSheetStartRows) {
+      // Это добавляет разрыв страницы после указанной строки
+      worksheet.getRow(104).addPageBreak();
     }
 
     // Добавляем общую массу с учётом опций

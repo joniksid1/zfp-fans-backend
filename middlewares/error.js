@@ -1,7 +1,9 @@
 module.exports = (err, req, res) => {
   const { statusCode = 500, message } = err;
   console.error('Error:', err);
-
+  res.status(500).json({
+    Ошибка: err,
+  });
   if (err.code === 'ETIMEDOUT') {
     // Обработка ошибки ETIMEDOUT
     res.status(500).json({

@@ -32,13 +32,7 @@ module.exports.getCommercialOffer = async (req, res, next) => {
     let currentRow = startRow;
 
     // Получаем данные из базы вентиляторов mySQL (по названиям опций)
-    await Promise.all(selectedData.map(async (data, index) => {
-      console.log(index, item);
-      // if (index === item) {
-      //   console.log(item, index);
-      //   worksheet.spliceRows(currentRow, 0, []);
-      //   currentRow += 1;
-      // }
+    await Promise.all(selectedData.map(async (data) => {
       const optionsQuery = await fanDataDb.query(`
         SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD, Regulator
         FROM ${MYSQL_FAN_DATABASE}.zfr_options
@@ -70,7 +64,10 @@ module.exports.getCommercialOffer = async (req, res, next) => {
 
       const addHeader = () => {
         // Вставляем строки для одной единицы
-        worksheet.duplicateRow(currentRow, 1, true);
+
+        currentRow += 1;
+
+        // worksheet.duplicateRow(currentRow, 1, true);
 
         worksheet.mergeCells(`B${currentRow}:E${currentRow}`);
         worksheet.getCell(`A${currentRow}`).value = {
@@ -130,34 +127,50 @@ module.exports.getCommercialOffer = async (req, res, next) => {
 
       addData(priceDbData[0]);
 
-      if (data.selectedOptions.selectFlatRoofSocket) {
-        worksheet.duplicateRow(currentRow, 1, true);
+      if (data.selectedOptions.selectFlatRoofSocket && priceDbData[1]) {
+        // worksheet.duplicateRow(currentRow, 1, false);
         addData(priceDbData[1]);
+        console.log(currentRow);
       }
 
-      if (data.selectedOptions.selectFlatRoofSocketSilencer) {
-        worksheet.duplicateRow(currentRow, 1, true);
+      if (data.selectedOptions.selectFlatRoofSocketSilencer && priceDbData[2]) {
+        // worksheet.duplicateRow(currentRow, 1, false);
         addData(priceDbData[2]);
+        console.log(currentRow);
       }
 
-      if (data.selectedOptions.selectSlantRoofSocketSilencer) {
-        worksheet.duplicateRow(currentRow, 1, true);
+      if (data.selectedOptions.selectSlantRoofSocketSilencer && priceDbData[3]) {
+        // worksheet.duplicateRow(currentRow, 1, false);
         addData(priceDbData[3]);
+        console.log(currentRow);
       }
 
-      if (data.selectedOptions.selectBackDraftDamper) {
-        worksheet.duplicateRow(currentRow, 1, true);
+      if (data.selectedOptions.selectBackDraftDamper && priceDbData[4]) {
+        // worksheet.duplicateRow(currentRow, 1, false);
         addData(priceDbData[4]);
+        console.log(currentRow);
       }
 
-      if (data.selectedOptions.selectFlexibleConnector) {
-        worksheet.duplicateRow(currentRow, 1, true);
+      if (data.selectedOptions.selectFlexibleConnector && priceDbData[5]) {
+        // worksheet.duplicateRow(currentRow, 1, false);
+        // console.log(priceDbData[5]);
+        // console.log(`Гибкая вставка подобрана для ${data.systemNameValue}`);
         addData(priceDbData[5]);
+        console.log(currentRow);
       }
 
-      if (data.selectedOptions.selectFlange) {
-        worksheet.duplicateRow(currentRow, 1, true);
+      if (data.selectedOptions.selectFlange && priceDbData[6]) {
+        // worksheet.duplicateRow(currentRow, 1, false);
         addData(priceDbData[6]);
+        console.log(currentRow);
+      }
+
+      if (data.selectedOptions.selectRegulator && priceDbData[7]) {
+        // worksheet.duplicateRow(currentRow, 1, false);
+        // console.log(priceDbData[7]);
+        // console.log(`Регулятор скорости подобран для ${data.systemNameValue}`);
+        addData(priceDbData[7]);
+        console.log(currentRow);
       }
     }));
 
@@ -194,3 +207,21 @@ module.exports.getCommercialOffer = async (req, res, next) => {
     }
   }
 };
+
+// .finally(() => {
+// // действия после завершения итрации
+// worksheet.spliceRows(currentRow, 0, []);
+// worksheet.getCell(`I${currentRow}`).fill = {
+//   type: 'pattern',
+//   pattern: 'solid',
+//   fgColor: { argb: 'C5D9F1' },
+//   bgColor: { argb: 'C5D9F1' },
+// };
+// worksheet.getCell(`M${currentRow}`).fill = {
+//   type: 'pattern',
+//   pattern: 'solid',
+//   fgColor: { argb: 'C5D9F1' },
+//   bgColor: { argb: 'C5D9F1' },
+// };
+// currentRow += 1;
+// });

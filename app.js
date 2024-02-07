@@ -29,8 +29,8 @@ app.use(requestLogger);
 // Передаём соединения с MySQL корневому маршруту
 app.use('/', router);
 
-app.use('*', () => {
-  throw new NotFoundError({ message: 'Страница не найдена' });
+app.use('*', (req, res, next) => {
+  next(new NotFoundError({ message: 'Страница не найдена' }));
 });
 
 app.use(errorLogger);
