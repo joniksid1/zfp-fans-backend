@@ -3,6 +3,9 @@ const path = require('path');
 const fs = require('fs').promises;
 const Jimp = require('jimp');
 const libre = require('libreoffice-convert');
+const axios = require('axios');
+const FormData = require('form-data');
+const crypto = require('crypto');
 const { fanDataDb } = require('../utils/db');
 const { NotFoundError } = require('../utils/errors/not-found-error');
 
@@ -205,7 +208,8 @@ module.exports.getDataSheet = async (req, res, next) => {
 
     const generateUniqueFileName = () => {
       const timestamp = new Date().getTime();
-      return `newDataSheet_${timestamp}.xlsx`;
+      const randomBytes = crypto.randomBytes(16).toString('hex');
+      return `newDataSheet_${timestamp}_${randomBytes}.xlsx`;
     };
 
     let totalWeight = mySqlDimensionsData.kg;
@@ -543,40 +547,71 @@ module.exports.getDataSheet = async (req, res, next) => {
 
     const xlsxBuf = await fs.readFile(outputPath);
 
-    // Конвертируем в PDF
-    libre.convert(xlsxBuf, '.pdf', undefined, async (convertErr, pdfBuf) => {
-      if (convertErr) {
-        console.error('Ошибка при конвертации файла:', convertErr);
-        next(convertErr);
-        return;
-      }
+    // Конвертируем в PDF - пашиным микросервисом
 
-      try {
-        // Сохраняем PDF на диск
-        const pdfOutputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}.pdf`);
-        await fs.writeFile(pdfOutputPath, pdfBuf);
-
-        console.log('Файл успешно сконвертирован в PDF и сохранен на диск:', pdfOutputPath);
-
-        // Устанавливаем заголовки Content-Type и Content-Disposition для PDF
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename=ZFR-Datasheet.pdf');
-
-        // Передаем содержимое файла PDF в ответ
-        res.write(pdfBuf, 'binary');
-        res.end();
-
-        try {
-          await fs.unlink(pdfOutputPath);
-          console.log('Файл PDF успешно удален');
-        } catch (unlinkPdfError) {
-          console.error('Ошибка удаления файла PDF:', unlinkPdfError);
-        }
-      } catch (writeFileErr) {
-        console.error('Ошибка при записи файла PDF на диск:', writeFileErr);
-        res.status(500).send('Ошибка при записи файла PDF');
-      }
+    // Создаем объект FormData и добавляем Excel-файл
+    const formData = new FormData();
+    formData.append('formFile', xlsxBuf, {
+      filename: 'generated_excel.xlsx',
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
+
+    // Отправляем POST-запрос на микросервис с использованием Axios
+    const response = await axios.post('http://192.168.97.98:443/Pdf', formData, {
+      headers: {
+        ...formData.getHeaders(),
+      },
+      responseType: 'arraybuffer',
+    });
+
+    // Получаем PDF-файл в виде буфера
+    const pdfBuffer = Buffer.from(response.data);
+
+    // Сохраняем PDF-файл локально (для проверки)
+    fs.writeFile('converted_file.pdf', pdfBuffer);
+
+    // Устанавливаем заголовки Content-Type и Content-Disposition для PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=ZFR-Datasheet.pdf');
+
+    // Передаем содержимое файла PDF в ответ
+    res.write(pdfBuffer, 'binary');
+    res.end();
+
+    // Конвертируем в PDF - моим методом
+    // libre.convert(xlsxBuf, '.pdf', undefined, async (convertErr, pdfBuf) => {
+    //   if (convertErr) {
+    //     console.error('Ошибка при конвертации файла:', convertErr);
+    //     next(convertErr);
+    //     return;
+    //   }
+
+    //   try {
+    //     // Сохраняем PDF на диск
+    //     const pdfOutputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}.pdf`);
+    //     await fs.writeFile(pdfOutputPath, pdfBuf);
+
+    //     console.log('Файл успешно сконвертирован в PDF и сохранен на диск:', pdfOutputPath);
+
+    //     // Устанавливаем заголовки Content-Type и Content-Disposition для PDF
+    //     res.setHeader('Content-Type', 'application/pdf');
+    //     res.setHeader('Content-Disposition', 'attachment; filename=ZFR-Datasheet.pdf');
+
+    //     // Передаем содержимое файла PDF в ответ
+    //     res.write(pdfBuf, 'binary');
+    //     res.end();
+
+    //     try {
+    //       await fs.unlink(pdfOutputPath);
+    //       console.log('Файл PDF успешно удален');
+    //     } catch (unlinkPdfError) {
+    //       console.error('Ошибка удаления файла PDF:', unlinkPdfError);
+    //     }
+    //   } catch (writeFileErr) {
+    //     console.error('Ошибка при записи файла PDF на диск:', writeFileErr);
+    //     res.status(500).send('Ошибка при записи файла PDF');
+    //   }
+    // });
   } catch (e) {
     next(e);
   } finally {
