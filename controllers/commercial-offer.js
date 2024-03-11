@@ -1,11 +1,8 @@
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;
-const { fanDataDb, priceDb } = require('../utils/db');
-
-const { NotFoundError } = require('../utils/errors/not-found-error');
-
-const { MYSQL_FAN_DATABASE } = process.env;
+const crypto = require('crypto');
+const { fetchDataQueries } = require('../utils/databaseQueryService');
 
 module.exports.getCommercialOffer = async (req, res, next) => {
   const templatePath = path.join(__dirname, '../template/commercial-offer.xlsx');
@@ -29,36 +26,8 @@ module.exports.getCommercialOffer = async (req, res, next) => {
     let currentRow = startRow;
 
     // Массив для хранения результатов SQL запросов
-    const queryResults = await Promise.all(selectedData.map(async (data) => {
-      const optionsQuery = await fanDataDb.query(`
-        SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD, Regulator
-        FROM ${MYSQL_FAN_DATABASE}.zfr_options
-        WHERE model = ?
-      `, [data.fanName]);
 
-      const [priceDbData] = await priceDb.query(`
-        SELECT *
-        FROM Price
-        WHERE Model IN (?, ?, ?, ?, ?, ?, ?, ?);
-      `, [
-        data.fanName,
-        optionsQuery[0][0].ZRS,
-        optionsQuery[0][0].ZRSI,
-        optionsQuery[0][0].ZRN,
-        optionsQuery[0][0].ZRF,
-        optionsQuery[0][0].ZRC,
-        optionsQuery[0][0].ZRD,
-        optionsQuery[0][0].Regulator,
-      ]);
-
-      if (priceDbData.length === 0 || optionsQuery.length === 0) {
-        throw new NotFoundError({ message: 'Не удалось найти данные в базе' });
-      }
-
-      return { data, priceDbData, optionsQuery };
-    }));
-
-    // Теперь, когда у нас есть все результаты запросов, мы можем использовать их в цикле map
+    const queryResults = await fetchDataQueries(selectedData);
 
     queryResults.forEach(({ data, priceDbData, optionsQuery }) => {
       // Увеличиваем порядковый номер вставляемой системы
@@ -99,6 +68,7 @@ module.exports.getCommercialOffer = async (req, res, next) => {
           let lastIndex = 0;
 
           // Поиск всех совпадений в тексте
+          // eslint-disable-next-line no-cond-assign
           while ((match = regex.exec(text)) !== null) {
             const startIndex = match.index;
             const matchedText = match[0];
@@ -235,7 +205,8 @@ module.exports.getCommercialOffer = async (req, res, next) => {
     // Генерация уникальных имён файлов для предотвращения конфликтов при удалении
     const generateUniqueFileName = () => {
       const timestamp = new Date().getTime();
-      return `newDataSheet_${timestamp}.xlsx`;
+      const randomBytes = crypto.randomBytes(16).toString('hex');
+      return `newDataSheet_${timestamp}_${randomBytes}.xlsx`;
     };
 
     // Сохраняем результат в новый файл Excel
@@ -259,10 +230,9 @@ module.exports.getCommercialOffer = async (req, res, next) => {
     try {
       if (outputPath) {
         await fs.unlink(outputPath);
-        console.log('Файл успешно удален');
       }
     } catch (unlinkError) {
-      console.error('Ошибка удаления файла:', unlinkError);
+      next(unlinkError);
     }
   }
 };

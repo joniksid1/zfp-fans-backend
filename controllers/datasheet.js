@@ -3,13 +3,14 @@ const path = require('path');
 const fs = require('fs').promises;
 const Jimp = require('jimp');
 const libre = require('libreoffice-convert');
-const axios = require('axios');
-const FormData = require('form-data');
 const crypto = require('crypto');
-const { fanDataDb } = require('../utils/db');
-const { NotFoundError } = require('../utils/errors/not-found-error');
-
-const { MYSQL_FAN_DATABASE } = process.env;
+const {
+  getFanTechnicalData,
+  getFanDimensionsData,
+  getFanOptionsName,
+  getSocketDimensionsData,
+  getOtherOptionsDimensionsData,
+} = require('../utils/databaseQueryService');
 
 // Экспортируем функцию обработки запроса
 
@@ -42,108 +43,11 @@ module.exports.getDataSheet = async (req, res, next) => {
 
   try {
     // Получаем данные из базы mySQL
-
-    const [techDataQuery] = await fanDataDb.query(`
-      SELECT
-        id,
-        model,
-        max_airflow_m3h,
-        max_static_pressure_pa,
-        voltage_V,
-        power_consumption_kW,
-        max_operating_current_A,
-        rotation_frequency_rpm,
-        sound_power_level_dBA,
-        airflow_temperature_range,
-        capacitor_mF,
-        electrical_connections_scheme
-      FROM ${MYSQL_FAN_DATABASE}.zfr_data
-      WHERE model = ?
-    `, [selectedData.fanName]);
-
-    const [dimensionsQuery] = await fanDataDb.query(`
-      SELECT
-        id,
-        model,
-        l,
-        l1,
-        l2,
-        h,
-        d,
-        l3,
-        kg
-      FROM ${MYSQL_FAN_DATABASE}.zfr_dimensions
-      WHERE model = ?
-    `, [selectedData.fanName]);
-
-    const [optionsQuery] = await fanDataDb.query(`
-      SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD
-      FROM ${MYSQL_FAN_DATABASE}.zfr_options
-      WHERE model = ?
-    `, [selectedData.fanName]);
-
-    // Проверка наличия данных в ответе
-
-    if (techDataQuery.length === 0) {
-      throw new NotFoundError({ message: 'Не удалось найти данные технических характеристик вентиляторов в базе' });
-    }
-
-    if (dimensionsQuery.length === 0) {
-      throw new NotFoundError({ message: 'Не удалось найти данные размеров вентиляторов в базе' });
-    }
-
-    if (optionsQuery.length === 0) {
-      throw new NotFoundError({ message: 'Не удалось найти названия опций в базе' });
-    }
-
-    // Извлекаем данные из ответов на SQL-запросы
-
-    const mySqlTechData = techDataQuery[0];
-    const mySqlDimensionsData = dimensionsQuery[0];
-    const fanOptions = optionsQuery[0];
-
-    // Делаем запрос на данные опций для выбранного вентилятора
-
-    const [socketDimensionsQuery] = await fanDataDb.query(`
-    SELECT
-      id,
-      TypeSize,
-      Model,
-      Hole_Spacing_D,
-      outer_socket_width_E,
-      Thread_Type_M,
-      inner_socket_width_G,
-      outer_platform_width_F,
-      height_H,
-      Weight_kg
-    FROM ${MYSQL_FAN_DATABASE}.zrs_zrsi_zrn_dimensions
-    WHERE Model IN (?, ?, ?)
-    `, [fanOptions.ZRS, fanOptions.ZRSI, fanOptions.ZRN]);
-
-    const [zrdZrcZrfDimensionsQuery] = await fanDataDb.query(`
-    SELECT
-      id,
-      TypeSize,
-      Model,
-      Inner_Diameter_d,
-      Middle_Diameter_e,
-      Inner_Diameter_corrected_D,
-      Height_h,
-      Length_L,
-      Diameter_D2,
-      Weight_kg
-    FROM ${MYSQL_FAN_DATABASE}.zrd_zrc_zrf_dimensions
-    WHERE Model IN (?, ?, ?)
-    `, [fanOptions.ZRD, fanOptions.ZRC, fanOptions.ZRF]);
-
-    // Проверка наличия данных в ответе
-    if (socketDimensionsQuery.length === 0) {
-      throw new NotFoundError({ message: 'Данные по монтажным стаканам не найдены в базе' });
-    }
-
-    if (zrdZrcZrfDimensionsQuery.length === 0) {
-      throw new NotFoundError({ message: 'Данные по опциям "фланец", "гибкая вставка", "обратный клапан" не найдены в базе' });
-    }
+    const fanTechData = await getFanTechnicalData(selectedData.fanName);
+    const fanDimensionsData = await getFanDimensionsData(selectedData.fanName);
+    const fanOptionsName = await getFanOptionsName(selectedData.fanName);
+    const socketDimensions = await getSocketDimensionsData(fanOptionsName);
+    const zrdZrcZrfDimensions = await getOtherOptionsDimensionsData(fanOptionsName);
 
     // Загружаем шаблон Excel-файла
 
@@ -162,25 +66,25 @@ module.exports.getDataSheet = async (req, res, next) => {
 
     // Заполняем данные из таблицы zfr_data
 
-    worksheet.getCell('E12').value = mySqlTechData.model;
-    worksheet.getCell('G19').value = mySqlTechData.voltage_V;
-    worksheet.getCell('G20').value = mySqlTechData.power_consumption_kW;
-    worksheet.getCell('G21').value = mySqlTechData.max_operating_current_A;
-    worksheet.getCell('G22').value = mySqlTechData.rotation_frequency_rpm;
-    worksheet.getCell('G23').value = mySqlTechData.sound_power_level_dBA;
+    worksheet.getCell('E12').value = fanTechData.model;
+    worksheet.getCell('G19').value = fanTechData.voltage_V;
+    worksheet.getCell('G20').value = fanTechData.power_consumption_kW;
+    worksheet.getCell('G21').value = fanTechData.max_operating_current_A;
+    worksheet.getCell('G22').value = fanTechData.rotation_frequency_rpm;
+    worksheet.getCell('G23').value = fanTechData.sound_power_level_dBA;
 
     // Заполняем данные из таблицы zfr_dimensions
 
-    worksheet.getCell('G24').value = mySqlDimensionsData.kg;
-    worksheet.getCell('B55').value = mySqlDimensionsData.l;
-    worksheet.getCell('C55').value = mySqlDimensionsData.l1;
-    worksheet.getCell('D55').value = mySqlDimensionsData.l2;
-    worksheet.getCell('E55').value = mySqlDimensionsData.h;
-    worksheet.getCell('F55').value = mySqlDimensionsData.d;
-    worksheet.getCell('J10').value = mySqlDimensionsData.h;
-    worksheet.getCell('J9').value = mySqlDimensionsData.l1;
-    worksheet.getCell('J11').value = mySqlDimensionsData.l1;
-    worksheet.getCell('G55').value = mySqlDimensionsData.l3;
+    worksheet.getCell('G24').value = fanDimensionsData.kg;
+    worksheet.getCell('B55').value = fanDimensionsData.l;
+    worksheet.getCell('C55').value = fanDimensionsData.l1;
+    worksheet.getCell('D55').value = fanDimensionsData.l2;
+    worksheet.getCell('E55').value = fanDimensionsData.h;
+    worksheet.getCell('F55').value = fanDimensionsData.d;
+    worksheet.getCell('J10').value = fanDimensionsData.h;
+    worksheet.getCell('J9').value = fanDimensionsData.l1;
+    worksheet.getCell('J11').value = fanDimensionsData.l1;
+    worksheet.getCell('G55').value = fanDimensionsData.l3;
 
     // Заполняем остальные поля
 
@@ -212,7 +116,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       return `newDataSheet_${timestamp}_${randomBytes}.xlsx`;
     };
 
-    let totalWeight = mySqlDimensionsData.kg;
+    let totalWeight = fanDimensionsData.kg;
     let startRow = 57; // Начальная строка для дополнительных опций
     const maxInstallationSecondSheetRows = 82; // Максимальное кол-во строк для вставки схемы
     // на 2-м листе
@@ -245,7 +149,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrsDimensions = socketDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRS'));
+      const zrsDimensions = socketDimensions.find((dimension) => dimension.Model.startsWith('ZRS'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrsDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrsDimensions.Hole_Spacing_D;
@@ -257,7 +161,6 @@ module.exports.getDataSheet = async (req, res, next) => {
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
       totalWeight += optionWeigth;
       startRow += 12;
-      console.log(`${startRow} после flat-roof-socket`);
     } else {
       // Удаляем строки, если нет опции
 
@@ -293,7 +196,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrsiDimensions = socketDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRSI'));
+      const zrsiDimensions = socketDimensions.find((dimension) => dimension.Model.startsWith('ZRSI'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrsiDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrsiDimensions.Hole_Spacing_D;
@@ -305,7 +208,6 @@ module.exports.getDataSheet = async (req, res, next) => {
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
       totalWeight += optionWeigth;
       startRow += 12;
-      console.log(`${startRow} после flat-roof-socket-silencer`);
     } else {
       // Удаляем строки, если нет опции
       for (let i = 0; i < 12; i += 1) {
@@ -341,7 +243,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrnDimensions = socketDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRN'));
+      const zrnDimensions = socketDimensions.find((dimension) => dimension.Model.startsWith('ZRN'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrnDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrnDimensions.Hole_Spacing_D;
@@ -353,7 +255,6 @@ module.exports.getDataSheet = async (req, res, next) => {
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
       totalWeight += optionWeigth;
       startRow += 12;
-      console.log(`${startRow} после slant-roof-socket-silencer`);
     } else {
       // Удаляем строки, если нет опции
       for (let i = 0; i < 12; i += 1) {
@@ -389,7 +290,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrdDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRD'));
+      const zrdDimensions = zrdZrcZrfDimensions.find((dimension) => dimension.Model.startsWith('ZRD'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrdDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrdDimensions.Middle_Diameter_e;
@@ -399,7 +300,6 @@ module.exports.getDataSheet = async (req, res, next) => {
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
       totalWeight += optionWeigth;
       startRow += 12;
-      console.log(`${startRow} после back-draft-damper`);
     } else {
       // Удаляем строки, если нет опции
       for (let i = 0; i < 12; i += 1) {
@@ -434,7 +334,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrcDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRC'));
+      const zrcDimensions = zrdZrcZrfDimensions.find((dimension) => dimension.Model.startsWith('ZRC'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrcDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrcDimensions.Inner_Diameter_d;
@@ -443,7 +343,6 @@ module.exports.getDataSheet = async (req, res, next) => {
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
       totalWeight += optionWeigth;
       startRow += 12;
-      console.log(`${startRow} после flexible-connector`);
     } else {
       // Удаляем строки, если нет опции
       for (let i = 0; i < 12; i += 1) {
@@ -479,7 +378,7 @@ module.exports.getDataSheet = async (req, res, next) => {
         editAs: 'oneCell',
       });
       // Добавляем данные об опции
-      const zrfDimensions = zrdZrcZrfDimensionsQuery.find((dimension) => dimension.Model.startsWith('ZRF'));
+      const zrfDimensions = zrdZrcZrfDimensions.find((dimension) => dimension.Model.startsWith('ZRF'));
       const dataRow = startRow + 11;
       const optionWeigth = Math.round(zrfDimensions.Weight_kg);
       worksheet.getCell(`B${dataRow}`).value = zrfDimensions.Inner_Diameter_d;
@@ -489,7 +388,6 @@ module.exports.getDataSheet = async (req, res, next) => {
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
       totalWeight += optionWeigth;
       startRow += 12;
-      console.log(`${startRow} после flange`);
     } else {
       // Удаляем строки, если нет опции
       for (let i = 0; i < 12; i += 1) {
@@ -547,71 +445,35 @@ module.exports.getDataSheet = async (req, res, next) => {
 
     const xlsxBuf = await fs.readFile(outputPath);
 
-    // Конвертируем в PDF - пашиным микросервисом
-
-    // Создаем объект FormData и добавляем Excel-файл
-    const formData = new FormData();
-    formData.append('formFile', xlsxBuf, {
-      filename: 'generated_excel.xlsx',
-      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
-
-    // Отправляем POST-запрос на микросервис с использованием Axios
-    const response = await axios.post('http://192.168.97.98:443/Pdf', formData, {
-      headers: {
-        ...formData.getHeaders(),
-      },
-      responseType: 'arraybuffer',
-    });
-
-    // Получаем PDF-файл в виде буфера
-    const pdfBuffer = Buffer.from(response.data);
-
-    // Сохраняем PDF-файл локально (для проверки)
-    fs.writeFile('converted_file.pdf', pdfBuffer);
-
-    // Устанавливаем заголовки Content-Type и Content-Disposition для PDF
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=ZFR-Datasheet.pdf');
-
-    // Передаем содержимое файла PDF в ответ
-    res.write(pdfBuffer, 'binary');
-    res.end();
-
     // Конвертируем в PDF - моим методом
-    // libre.convert(xlsxBuf, '.pdf', undefined, async (convertErr, pdfBuf) => {
-    //   if (convertErr) {
-    //     console.error('Ошибка при конвертации файла:', convertErr);
-    //     next(convertErr);
-    //     return;
-    //   }
+    libre.convert(xlsxBuf, '.pdf', undefined, async (convertErr, pdfBuf) => {
+      if (convertErr) {
+        next(convertErr);
+        return;
+      }
 
-    //   try {
-    //     // Сохраняем PDF на диск
-    //     const pdfOutputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}.pdf`);
-    //     await fs.writeFile(pdfOutputPath, pdfBuf);
+      try {
+        // Сохраняем PDF на диск
+        const pdfOutputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}.pdf`);
+        await fs.writeFile(pdfOutputPath, pdfBuf);
 
-    //     console.log('Файл успешно сконвертирован в PDF и сохранен на диск:', pdfOutputPath);
+        // Устанавливаем заголовки Content-Type и Content-Disposition для PDF
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=ZFR-Datasheet.pdf');
 
-    //     // Устанавливаем заголовки Content-Type и Content-Disposition для PDF
-    //     res.setHeader('Content-Type', 'application/pdf');
-    //     res.setHeader('Content-Disposition', 'attachment; filename=ZFR-Datasheet.pdf');
+        // Передаем содержимое файла PDF в ответ
+        res.write(pdfBuf, 'binary');
+        res.end();
 
-    //     // Передаем содержимое файла PDF в ответ
-    //     res.write(pdfBuf, 'binary');
-    //     res.end();
-
-    //     try {
-    //       await fs.unlink(pdfOutputPath);
-    //       console.log('Файл PDF успешно удален');
-    //     } catch (unlinkPdfError) {
-    //       console.error('Ошибка удаления файла PDF:', unlinkPdfError);
-    //     }
-    //   } catch (writeFileErr) {
-    //     console.error('Ошибка при записи файла PDF на диск:', writeFileErr);
-    //     res.status(500).send('Ошибка при записи файла PDF');
-    //   }
-    // });
+        try {
+          await fs.unlink(pdfOutputPath);
+        } catch (unlinkPdfError) {
+          next(unlinkPdfError);
+        }
+      } catch (writeFileErr) {
+        next(writeFileErr);
+      }
+    });
   } catch (e) {
     next(e);
   } finally {
@@ -619,14 +481,12 @@ module.exports.getDataSheet = async (req, res, next) => {
     try {
       if (outputPath) {
         await fs.unlink(outputPath);
-        console.log('Файл успешно удален');
       }
       if (imageOutputPath) {
         await fs.unlink(imageOutputPath);
-        console.log('Изображение успешно удалено');
       }
     } catch (unlinkError) {
-      console.error('Ошибка удаления файла:', unlinkError);
+      next(unlinkError);
     }
   }
 };
