@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 const generateUniqueFileName = () => {
   const timestamp = new Date().getTime();
   const randomBytes = crypto.randomBytes(16).toString('hex');

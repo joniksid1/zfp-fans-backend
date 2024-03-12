@@ -27,6 +27,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
 
 app.use('/api', router);
+// Для локального теста;
+// app.use('/', router);
 
 app.use('*', (req, res, next) => {
   next(new NotFoundError({ message: 'Страница не найдена' }));
