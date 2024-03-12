@@ -26,8 +26,7 @@ app.use(express.json({ limit: '10mb' }));
 
 app.use(requestLogger);
 
-// Передаём соединения с MySQL корневому маршруту
-app.use('/', router);
+app.use('/api', router);
 
 app.use('*', (req, res, next) => {
   next(new NotFoundError({ message: 'Страница не найдена' }));

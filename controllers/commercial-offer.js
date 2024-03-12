@@ -1,8 +1,8 @@
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;
-const crypto = require('crypto');
-const { fetchDataQueries } = require('../utils/databaseQueryService');
+const { fetchDataQueries } = require('../utils/database-query-service');
+const { generateUniqueFileName } = require('../utils/file-name');
 
 module.exports.getCommercialOffer = async (req, res, next) => {
   const templatePath = path.join(__dirname, '../template/commercial-offer.xlsx');
@@ -38,12 +38,10 @@ module.exports.getCommercialOffer = async (req, res, next) => {
         currentRow += 2;
 
         worksheet.mergeCells(`B${currentRow}:E${currentRow}`);
-        worksheet.getCell(`A${currentRow}`).value = {
-          richText: [
-            { text: `${item}`, font: { name: 'Arial', size: 11, bold: true } },
-          ],
-        };
-        worksheet.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'center' };
+        const cellA = worksheet.getCell(`A${currentRow}`);
+        cellA.value = parseInt(item, 10);
+        cellA.alignment = { vertical: 'middle', horizontal: 'center' };
+        cellA.font = { name: 'Arial', size: 11, bold: true };
         worksheet.getCell(`B${currentRow}`).value = {
           richText: [
             { text: `${data.systemNameValue} (L=${data.flowRateValue}м3/ч, Рс=${data.staticPressureValue}Па)`, font: { name: 'Arial', size: 11, bold: true } },
@@ -203,12 +201,6 @@ module.exports.getCommercialOffer = async (req, res, next) => {
     });
 
     // Генерация уникальных имён файлов для предотвращения конфликтов при удалении
-    const generateUniqueFileName = () => {
-      const timestamp = new Date().getTime();
-      const randomBytes = crypto.randomBytes(16).toString('hex');
-      return `newDataSheet_${timestamp}_${randomBytes}.xlsx`;
-    };
-
     // Сохраняем результат в новый файл Excel
     outputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}`);
     await workbook.xlsx.writeFile(outputPath);

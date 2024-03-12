@@ -1,4 +1,4 @@
-const { getFanModels, getFanDataPoints } = require('../utils/databaseQueryService');
+const { getFanModels, getFanDataPoints } = require('../utils/database-query-service');
 
 module.exports.getFanModels = async (req, res, next) => {
   try {

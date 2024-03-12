@@ -3,14 +3,14 @@ const path = require('path');
 const fs = require('fs').promises;
 const Jimp = require('jimp');
 const libre = require('libreoffice-convert');
-const crypto = require('crypto');
 const {
   getFanTechnicalData,
   getFanDimensionsData,
   getFanOptionsName,
   getSocketDimensionsData,
   getOtherOptionsDimensionsData,
-} = require('../utils/databaseQueryService');
+} = require('../utils/database-query-service');
+const { generateUniqueFileName } = require('../utils/file-name');
 
 // Экспортируем функцию обработки запроса
 
@@ -27,16 +27,9 @@ module.exports.getDataSheet = async (req, res, next) => {
 
   const imageBuffer = await jimpImage.getBufferAsync(Jimp.MIME_PNG);
 
-  // Генерация уникального имени для изображения
-
-  const generateUniqueImageFileName = () => {
-    const timestamp = new Date().getTime();
-    return `image_${timestamp}.png`;
-  };
-
   // Формируем путь для сохранения изображения
 
-  const imageOutputPath = path.join(__dirname, `../uploads/${generateUniqueImageFileName()}`);
+  const imageOutputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}`);
   await jimpImage.writeAsync(imageOutputPath);
 
   let outputPath;
@@ -107,14 +100,6 @@ module.exports.getDataSheet = async (req, res, next) => {
 
     // Это добавляет разрыв страницы после указанной строки
     worksheet.getRow(55).addPageBreak();
-
-    // Генерация уникальных имён файлов для предотвращения конфликтов при удалении
-
-    const generateUniqueFileName = () => {
-      const timestamp = new Date().getTime();
-      const randomBytes = crypto.randomBytes(16).toString('hex');
-      return `newDataSheet_${timestamp}_${randomBytes}.xlsx`;
-    };
 
     let totalWeight = fanDimensionsData.kg;
     let startRow = 57; // Начальная строка для дополнительных опций
