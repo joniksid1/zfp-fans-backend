@@ -9,13 +9,21 @@ const { requestLogger, errorLogger } = require('./middlewares/logger');
 
 const {
   PORT = '3000',
+  MODE = 'dev',
 } = process.env;
 
 const app = express();
 
 // Нужно разрешить кросс-доменные запросы, сейчас это localhost:5173 vite или 3001 create-react-app
 app.use(cors({
-  origin: ['http://localhost:3001', 'http://localhost:5173'],
+  origin: [
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'https://web-rooffan',
+    'http://web-rooffan',
+    'http://192.168.97.110',
+    'https://192.168.97.110',
+  ],
   credentials: true,
   maxAge: 60,
 }));
@@ -26,9 +34,12 @@ app.use(express.json({ limit: '20mb' }));
 
 app.use(requestLogger);
 
-app.use('/api', router);
-// Для локального теста;
-// app.use('/', router);
+// Маршрутизация в зависимости от режима (разработка и прод)
+if (MODE === 'production') {
+  app.use('/api', router);
+} else {
+  app.use('/', router);
+}
 
 app.use('*', (req, res, next) => {
   next(new NotFoundError({ message: 'Страница не найдена' }));

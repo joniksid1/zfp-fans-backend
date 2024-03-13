@@ -82,7 +82,8 @@ module.exports.getDataSheet = async (req, res, next) => {
     // Заполняем остальные поля
 
     const currentDate = new Date();
-    worksheet.getCell('J5').value = currentDate;
+    const formattedDate = currentDate.toLocaleDateString('ru-RU');
+    worksheet.getCell('J5').value = formattedDate;
     worksheet.getCell('J4').value = selectedData.projectNameValue;
 
     // Вставляем изображение в ячейку B28
@@ -101,7 +102,7 @@ module.exports.getDataSheet = async (req, res, next) => {
     // Это добавляет разрыв страницы после указанной строки
     worksheet.getRow(55).addPageBreak();
 
-    let totalWeight = fanDimensionsData.kg;
+    let totalWeight = parseFloat(fanDimensionsData.kg, 10);
     let startRow = 57; // Начальная строка для дополнительных опций
     const maxInstallationSecondSheetRows = 82; // Максимальное кол-во строк для вставки схемы
     // на 2-м листе
@@ -136,7 +137,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       // Добавляем данные об опции
       const zrsDimensions = socketDimensions.find((dimension) => dimension.Model.startsWith('ZRS'));
       const dataRow = startRow + 11;
-      const optionWeigth = Math.round(zrsDimensions.Weight_kg);
+      const optionWeigth = zrsDimensions.Weight_kg;
       worksheet.getCell(`B${dataRow}`).value = zrsDimensions.Hole_Spacing_D;
       worksheet.getCell(`C${dataRow}`).value = zrsDimensions.outer_socket_width_E;
       worksheet.getCell(`D${dataRow}`).value = zrsDimensions.Thread_Type_M;
@@ -144,7 +145,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       worksheet.getCell(`F${dataRow}`).value = zrsDimensions.outer_platform_width_F;
       worksheet.getCell(`G${dataRow}`).value = zrsDimensions.height_H;
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
-      totalWeight += optionWeigth;
+      totalWeight += parseFloat(optionWeigth, 10);
       startRow += 12;
     } else {
       // Удаляем строки, если нет опции
@@ -183,7 +184,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       // Добавляем данные об опции
       const zrsiDimensions = socketDimensions.find((dimension) => dimension.Model.startsWith('ZRSI'));
       const dataRow = startRow + 11;
-      const optionWeigth = Math.round(zrsiDimensions.Weight_kg);
+      const optionWeigth = zrsiDimensions.Weight_kg;
       worksheet.getCell(`B${dataRow}`).value = zrsiDimensions.Hole_Spacing_D;
       worksheet.getCell(`C${dataRow}`).value = zrsiDimensions.outer_socket_width_E;
       worksheet.getCell(`D${dataRow}`).value = zrsiDimensions.Thread_Type_M;
@@ -191,7 +192,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       worksheet.getCell(`F${dataRow}`).value = zrsiDimensions.outer_platform_width_F;
       worksheet.getCell(`G${dataRow}`).value = zrsiDimensions.height_H;
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
-      totalWeight += optionWeigth;
+      totalWeight += parseFloat(optionWeigth, 10);
       startRow += 12;
     } else {
       // Удаляем строки, если нет опции
@@ -230,7 +231,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       // Добавляем данные об опции
       const zrnDimensions = socketDimensions.find((dimension) => dimension.Model.startsWith('ZRN'));
       const dataRow = startRow + 11;
-      const optionWeigth = Math.round(zrnDimensions.Weight_kg);
+      const optionWeigth = zrnDimensions.Weight_kg;
       worksheet.getCell(`B${dataRow}`).value = zrnDimensions.Hole_Spacing_D;
       worksheet.getCell(`C${dataRow}`).value = zrnDimensions.outer_socket_width_E;
       worksheet.getCell(`D${dataRow}`).value = zrnDimensions.Thread_Type_M;
@@ -238,7 +239,7 @@ module.exports.getDataSheet = async (req, res, next) => {
       worksheet.getCell(`F${dataRow}`).value = zrnDimensions.outer_platform_width_F;
       worksheet.getCell(`G${dataRow}`).value = zrnDimensions.height_H;
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
-      totalWeight += optionWeigth;
+      totalWeight += parseFloat(optionWeigth, 10);
       startRow += 12;
     } else {
       // Удаляем строки, если нет опции
@@ -277,13 +278,13 @@ module.exports.getDataSheet = async (req, res, next) => {
       // Добавляем данные об опции
       const zrdDimensions = zrdZrcZrfDimensions.find((dimension) => dimension.Model.startsWith('ZRD'));
       const dataRow = startRow + 11;
-      const optionWeigth = Math.round(zrdDimensions.Weight_kg);
+      const optionWeigth = zrdDimensions.Weight_kg;
       worksheet.getCell(`B${dataRow}`).value = zrdDimensions.Middle_Diameter_e;
       worksheet.getCell(`C${dataRow}`).value = zrdDimensions.Diameter_D2;
       worksheet.getCell(`D${dataRow}`).value = zrdDimensions.Inner_Diameter_corrected_D;
       worksheet.getCell(`E${dataRow}`).value = zrdDimensions.Length_L;
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
-      totalWeight += optionWeigth;
+      totalWeight += parseFloat(optionWeigth, 10);
       startRow += 12;
     } else {
       // Удаляем строки, если нет опции
@@ -321,12 +322,12 @@ module.exports.getDataSheet = async (req, res, next) => {
       // Добавляем данные об опции
       const zrcDimensions = zrdZrcZrfDimensions.find((dimension) => dimension.Model.startsWith('ZRC'));
       const dataRow = startRow + 11;
-      const optionWeigth = Math.round(zrcDimensions.Weight_kg);
+      const optionWeigth = zrcDimensions.Weight_kg;
       worksheet.getCell(`B${dataRow}`).value = zrcDimensions.Inner_Diameter_d;
       worksheet.getCell(`C${dataRow}`).value = zrcDimensions.Middle_Diameter_e;
       worksheet.getCell(`D${dataRow}`).value = zrcDimensions.Inner_Diameter_corrected_D;
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
-      totalWeight += optionWeigth;
+      totalWeight += parseFloat(optionWeigth, 10);
       startRow += 12;
     } else {
       // Удаляем строки, если нет опции
@@ -365,13 +366,13 @@ module.exports.getDataSheet = async (req, res, next) => {
       // Добавляем данные об опции
       const zrfDimensions = zrdZrcZrfDimensions.find((dimension) => dimension.Model.startsWith('ZRF'));
       const dataRow = startRow + 11;
-      const optionWeigth = Math.round(zrfDimensions.Weight_kg);
+      const optionWeigth = zrfDimensions.Weight_kg;
       worksheet.getCell(`B${dataRow}`).value = zrfDimensions.Inner_Diameter_d;
       worksheet.getCell(`C${dataRow}`).value = zrfDimensions.Middle_Diameter_e;
       worksheet.getCell(`D${dataRow}`).value = zrfDimensions.Inner_Diameter_corrected_D;
       worksheet.getCell(`E${dataRow}`).value = zrfDimensions.Height_h;
       worksheet.getCell(`H${dataRow}`).value = optionWeigth;
-      totalWeight += optionWeigth;
+      totalWeight += parseFloat(optionWeigth, 10);
       startRow += 12;
     } else {
       // Удаляем строки, если нет опции
@@ -392,7 +393,6 @@ module.exports.getDataSheet = async (req, res, next) => {
     }
 
     // Добавляем общую массу с учётом опций
-
     worksheet.getCell('J12').value = totalWeight;
 
     // Объединяем надпись "схемы" в одну ячейку - Баг библиотеки с разбивкой ячейки
