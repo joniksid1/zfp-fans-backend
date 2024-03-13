@@ -9,7 +9,7 @@ const { requestLogger, errorLogger } = require('./middlewares/logger');
 
 const {
   PORT = '3000',
-  // MODE = 'dev',
+  MODE = 'dev',
 } = process.env;
 
 const app = express();
@@ -35,12 +35,11 @@ app.use(express.json({ limit: '20mb' }));
 app.use(requestLogger);
 
 // Маршрутизация в зависимости от режима (разработка и прод)
-// if (MODE === 'production') {
-//   app.use('/', router);
-// } else {
-//   app.use('/api', router);
-// }
-app.use('/api', router);
+if (MODE === 'production') {
+  app.use('/api', router);
+} else {
+  app.use('/', router);
+}
 
 app.use('*', (req, res, next) => {
   next(new NotFoundError({ message: 'Страница не найдена' }));
