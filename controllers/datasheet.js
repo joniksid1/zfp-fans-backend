@@ -1,6 +1,7 @@
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const Jimp = require('jimp');
 const libre = require('libreoffice-convert');
 const {
@@ -20,17 +21,23 @@ module.exports.getDataSheet = async (req, res, next) => {
 
   // Создаем изображение из base64
 
-  const buffer = Buffer.from(selectedData.plotImage.split(',')[1], 'base64');
-  const jimpImage = await Jimp.read(buffer);
+  let imageBuffer;
+  let imageOutputPath;
 
-  // Получаем буфер изображения
+  try {
+    const buffer = Buffer.from(selectedData.plotImage.split(',')[1], 'base64');
+    const jimpImage = await Jimp.read(buffer);
 
-  const imageBuffer = await jimpImage.getBufferAsync(Jimp.MIME_PNG);
+    // Получаем буфер изображения
+    imageBuffer = await jimpImage.getBufferAsync(Jimp.MIME_PNG);
 
-  // Формируем путь для сохранения изображения
-
-  const imageOutputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}`);
-  await jimpImage.writeAsync(imageOutputPath);
+    // Формируем путь для сохранения изображения
+    imageOutputPath = path.join(__dirname, `../uploads/${generateUniqueFileName()}`);
+    await jimpImage.writeAsync(imageOutputPath);
+  } catch (error) {
+    next(error);
+    return;
+  }
 
   let outputPath;
 
@@ -69,6 +76,7 @@ module.exports.getDataSheet = async (req, res, next) => {
     // Заполняем данные из таблицы zfr_dimensions
 
     worksheet.getCell('G24').value = fanDimensionsData.kg;
+    worksheet.getCell('G25').value = `${selectedData.workingFlowRate} м3/час, ${selectedData.workingStaticPressure} Па`;
     worksheet.getCell('B55').value = fanDimensionsData.l;
     worksheet.getCell('C55').value = fanDimensionsData.l1;
     worksheet.getCell('D55').value = fanDimensionsData.l2;
@@ -464,10 +472,10 @@ module.exports.getDataSheet = async (req, res, next) => {
   } finally {
     // Перемещаем код удаления файла за пределы блока catch
     try {
-      if (outputPath) {
+      if (outputPath && fsSync.existsSync(outputPath)) {
         await fs.unlink(outputPath);
       }
-      if (imageOutputPath) {
+      if (imageOutputPath && fsSync.existsSync(imageOutputPath)) {
         await fs.unlink(imageOutputPath);
       }
     } catch (unlinkError) {
