@@ -76,7 +76,7 @@ module.exports.getDataSheet = async (req, res, next) => {
     // Заполняем данные из таблицы zfr_dimensions
 
     worksheet.getCell('G24').value = fanDimensionsData.kg;
-    worksheet.getCell('G25').value = `${selectedData.workingFlowRate} м3/час, ${selectedData.workingStaticPressure} Па`;
+    worksheet.getCell('G25').value = `${selectedData.workingFlowRate} / ${selectedData.workingStaticPressure}`;
     worksheet.getCell('B55').value = fanDimensionsData.l;
     worksheet.getCell('C55').value = fanDimensionsData.l1;
     worksheet.getCell('D55').value = fanDimensionsData.l2;
