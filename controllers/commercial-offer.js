@@ -44,7 +44,7 @@ module.exports.getCommercialOffer = async (req, res, next) => {
         cellA.font = { name: 'Arial', size: 11, bold: true };
         worksheet.getCell(`B${currentRow}`).value = {
           richText: [
-            { text: `${data.systemNameValue} (L=${data.flowRateValue}м3/ч, Рс=${data.staticPressureValue}Па)`, font: { name: 'Arial', size: 11, bold: true } },
+            { text: `${data.systemNameValue} (L=${data.flowRateValue} м3/ч; Рс=${data.staticPressureValue} Па)`, font: { name: 'Arial', size: 11, bold: true } },
           ],
         };
         worksheet.getRow(currentRow).height = 47;
