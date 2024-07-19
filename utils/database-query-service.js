@@ -1,12 +1,14 @@
-const { fanDataDb, priceDb } = require('./db');
+const { fanDataDb, priceDb, checkAndReconnect } = require('./db');
 const { NotFoundError } = require('./errors/not-found-error');
 
-const { MYSQL_FAN_DATABASE } = process.env;
+const { MYSQL_FAN_DATABASE, MYSQL_PRICE_DATABASE } = process.env;
 const { fanModels } = require('../constants/fan-models');
 
 // Получение данных моделей вентиляторов из БД (для fan-data.js)
 async function getFanModels() {
+  await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
   let connection;
+
   try {
     connection = await fanDataDb.getConnection();
     const [allModelsQuery] = await connection.execute(`
@@ -27,6 +29,7 @@ async function getFanModels() {
 
 // Получение данных о точках графиков вентиляторов (для fan-data.js)
 async function getFanDataPoints() {
+  await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
   let connection;
   const fanDataResults = [];
 
@@ -65,6 +68,9 @@ async function getFanDataPoints() {
 
 // Получение данных по ценам и названиям из БД для коммерческого предложения
 async function fetchDataQueries(selectedData) {
+  await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
+  await checkAndReconnect(priceDb, MYSQL_PRICE_DATABASE);
+
   const queryResults = await Promise.all(selectedData.map(async (data) => {
     const optionsQuery = await fanDataDb.query(`
       SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD, Regulator
@@ -99,6 +105,7 @@ async function fetchDataQueries(selectedData) {
 
 // Получение технических характеристик вентиляторов
 async function getFanTechnicalData(fanName) {
+  await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
   const [techDataQuery] = await fanDataDb.query(`
     SELECT
       id,
@@ -126,6 +133,7 @@ async function getFanTechnicalData(fanName) {
 
 // Получение габаритов вентиляторов
 async function getFanDimensionsData(fanName) {
+  await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
   const [dimensionsQuery] = await fanDataDb.query(`
     SELECT
       id,
@@ -150,6 +158,7 @@ async function getFanDimensionsData(fanName) {
 
 // Получение данных названий опций
 async function getFanOptionsName(fanName) {
+  await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
   const [optionsQuery] = await fanDataDb.query(`
     SELECT ZRS, ZRSI, ZRN, ZRF, ZRC, ZRD
     FROM ${MYSQL_FAN_DATABASE}.zfr_options
@@ -165,49 +174,45 @@ async function getFanOptionsName(fanName) {
 
 // Получение габаритов монтажных стаканов
 async function getSocketDimensionsData(options) {
+  await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
+  const placeholders = options.map(() => '?').join(',');
   const [socketDimensionsQuery] = await fanDataDb.query(`
     SELECT
-      id,
-      TypeSize,
-      Model,
-      Hole_Spacing_D,
-      outer_socket_width_E,
-      Thread_Type_M,
-      inner_socket_width_G,
-      outer_platform_width_F,
-      height_H,
-      Weight_kg
-    FROM ${MYSQL_FAN_DATABASE}.zrs_zrsi_zrn_dimensions
-    WHERE Model IN (?, ?, ?)
-  `, [options.ZRS, options.ZRSI, options.ZRN]);
+      model,
+      l,
+      d,
+      h,
+      kg
+    FROM ${MYSQL_FAN_DATABASE}.zfr_sockets
+    WHERE model IN (${placeholders})
+  `, options);
 
   if (socketDimensionsQuery.length === 0) {
-    throw new NotFoundError({ message: 'Данные по монтажным стаканам не найдены в базе' });
+    throw new NotFoundError({ message: 'Не удалось найти данные размеров монтажных стаканов в базе' });
   }
 
   return socketDimensionsQuery;
 }
 
-// Получение габаритов опций "гибкая вставка", "фланец", "обратный клапан"
+// Получение данных других опций
 async function getOtherOptionsDimensionsData(options) {
+  await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
+  const placeholders = options.map(() => '?').join(',');
   const [otherOptionsDimensionsQuery] = await fanDataDb.query(`
     SELECT
-      id,
-      TypeSize,
-      Model,
-      Inner_Diameter_d,
-      Middle_Diameter_e,
-      Inner_Diameter_corrected_D,
-      Height_h,
-      Length_L,
-      Diameter_D2,
-      Weight_kg
-    FROM ${MYSQL_FAN_DATABASE}.zrd_zrc_zrf_dimensions
-    WHERE Model IN (?, ?, ?)
-  `, [options.ZRD, options.ZRC, options.ZRF]);
+      model,
+      l,
+      l1,
+      l2,
+      d,
+      h,
+      kg
+    FROM ${MYSQL_FAN_DATABASE}.zfr_other_options
+    WHERE model IN (${placeholders})
+  `, options);
 
   if (otherOptionsDimensionsQuery.length === 0) {
-    throw new NotFoundError({ message: 'Данные по опциям "фланец", "гибкая вставка", "обратный клапан" не найдены в базе' });
+    throw new NotFoundError({ message: 'Не удалось найти данные размеров дополнительных опций в базе' });
   }
 
   return otherOptionsDimensionsQuery;

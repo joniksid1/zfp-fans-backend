@@ -32,7 +32,6 @@ const createPool = (database) => {
       if (error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ECONNRESET') {
         // В случае разрыва соединения, пересоздаем пул
         await recreatePool(pool, database);
-        return; // Важно вернуться, чтобы избежать отправки запроса для закрытого соединения
       }
     } finally {
       if (connection) {
@@ -54,25 +53,39 @@ const createPool = (database) => {
 let fanDataDb = createPool(MYSQL_FAN_DATABASE);
 let priceDb = createPool(MYSQL_PRICE_DATABASE);
 
-// Пересоздание пула соединений - обрабатываем ECONNRESET
-recreatePool = async (pool, dbName) => {
+recreatePool = async (dbName) => {
   try {
-    // Закрываем старое соединение
-    await pool.end();
-
-    // Создаем новый пул
-    const newPool = await createPool(dbName);
-
-    // Обновляем переменную, содержащую пул, fanDataDb или priceDb
+    let newPool;
     if (dbName === MYSQL_FAN_DATABASE) {
-      fanDataDb = newPool;
+      await fanDataDb.end();
+      // Создаем новый пул
+      fanDataDb = createPool(dbName);
+      newPool = fanDataDb;
     } else if (dbName === MYSQL_PRICE_DATABASE) {
-      priceDb = newPool;
+      await priceDb.end();
+      priceDb = createPool(dbName);
+      newPool = priceDb;
     }
-
     console.log(`Успешно пересоздано соединение для базы данных ${dbName}`);
+    return newPool;
   } catch (error) {
     console.error(`Ошибка при пересоздании соединения для базы данных ${dbName}:`, error);
+    throw error;
+  }
+};
+
+// Проверка состояния соединения и переподключение при его потере
+const checkAndReconnect = async (pool, dbName) => {
+  try {
+    // Проверяем и возвращаем старое соединение
+    const connection = await pool.getConnection();
+    connection.release();
+  } catch (error) {
+    if (error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ECONNRESET') {
+      await recreatePool(dbName);
+    } else {
+      throw error;
+    }
   }
 };
 
@@ -86,4 +99,4 @@ process.on('SIGINT', async () => {
   process.exit();
 });
 
-module.exports = { fanDataDb, priceDb };
+module.exports = { fanDataDb, priceDb, checkAndReconnect };
