@@ -175,44 +175,50 @@ async function getFanOptionsName(fanName) {
 // Получение габаритов монтажных стаканов
 async function getSocketDimensionsData(options) {
   await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
-  const placeholders = options.map(() => '?').join(',');
   const [socketDimensionsQuery] = await fanDataDb.query(`
     SELECT
-      model,
-      l,
-      d,
-      h,
-      kg
-    FROM ${MYSQL_FAN_DATABASE}.zfr_sockets
-    WHERE model IN (${placeholders})
-  `, options);
+      id,
+      TypeSize,
+      Model,
+      Hole_Spacing_D,
+      outer_socket_width_E,
+      Thread_Type_M,
+      inner_socket_width_G,
+      outer_platform_width_F,
+      height_H,
+      Weight_kg
+    FROM ${MYSQL_FAN_DATABASE}.zrs_zrsi_zrn_dimensions
+    WHERE Model IN (?, ?, ?)
+  `, [options.ZRS, options.ZRSI, options.ZRN]);
 
   if (socketDimensionsQuery.length === 0) {
-    throw new NotFoundError({ message: 'Не удалось найти данные размеров монтажных стаканов в базе' });
+    throw new NotFoundError({ message: 'Данные по монтажным стаканам не найдены в базе' });
   }
 
   return socketDimensionsQuery;
 }
 
-// Получение данных других опций
+// Получение габаритов опций "гибкая вставка", "фланец", "обратный клапан"
 async function getOtherOptionsDimensionsData(options) {
   await checkAndReconnect(fanDataDb, MYSQL_FAN_DATABASE);
-  const placeholders = options.map(() => '?').join(',');
   const [otherOptionsDimensionsQuery] = await fanDataDb.query(`
     SELECT
-      model,
-      l,
-      l1,
-      l2,
-      d,
-      h,
-      kg
-    FROM ${MYSQL_FAN_DATABASE}.zfr_other_options
-    WHERE model IN (${placeholders})
-  `, options);
+      id,
+      TypeSize,
+      Model,
+      Inner_Diameter_d,
+      Middle_Diameter_e,
+      Inner_Diameter_corrected_D,
+      Height_h,
+      Length_L,
+      Diameter_D2,
+      Weight_kg
+    FROM ${MYSQL_FAN_DATABASE}.zrd_zrc_zrf_dimensions
+    WHERE Model IN (?, ?, ?)
+  `, [options.ZRD, options.ZRC, options.ZRF]);
 
   if (otherOptionsDimensionsQuery.length === 0) {
-    throw new NotFoundError({ message: 'Не удалось найти данные размеров дополнительных опций в базе' });
+    throw new NotFoundError({ message: 'Данные по опциям "фланец", "гибкая вставка", "обратный клапан" не найдены в базе' });
   }
 
   return otherOptionsDimensionsQuery;
