@@ -110,7 +110,7 @@ module.exports.getCommercialOffer = async (req, res, next) => {
           formula: `H${currentRow + 1}*(1-I${currentRow + 1})`,
           result: (priceData.Price * (1 - 0)),
         };
-        worksheet.getCell(`M${currentRow + 1}`).value = 1;
+        worksheet.getCell(`M${currentRow + 1}`).value = parseInt(data.quantity, 10);
         worksheet.getCell(`M${currentRow + 1}`).style.font = { name: 'Arial', size: 11, color: { argb: '0000FF' } };
         worksheet.getCell(`P${currentRow + 1}`).value = {
           formula: `L${currentRow + 1}*M${currentRow + 1}`,
