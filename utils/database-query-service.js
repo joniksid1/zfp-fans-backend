@@ -18,7 +18,12 @@ async function getFanModels() {
     if (allModelsQuery.length === 0) {
       throw new NotFoundError({ message: 'Не удалось найти данные названий вентиляторов в базе' });
     }
-    const modelsArray = allModelsQuery.map((result) => result.model);
+
+    // Фильтрация модели 'ZFR 1,9-2E'
+    const modelsArray = allModelsQuery
+      .map((result) => result.model)
+      .filter((model) => model !== 'ZFR 1,9-2E');
+
     return modelsArray;
   } finally {
     if (connection) {

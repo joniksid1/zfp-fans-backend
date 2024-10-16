@@ -60,7 +60,7 @@ module.exports.getCommercialOffer = async (req, res, next) => {
         const formatText = (text) => {
           // Регулярное выражение для поиска ключевых слов и всего текста после них,
           // не включая кириллические символы
-          const regex = /(Zilon|MTY|IDS)[^\u0400-\u04FF]*/g;
+          const regex = /(Zilon|MTY|IDS|SRE)[^\u0400-\u04FF]*/g;
           const formattedText = [];
           let match;
           let lastIndex = 0;
